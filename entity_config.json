@@ -1,0 +1,11 @@
+{
+  "entities": {
+    "人物": null,
+    "地理位置": null,
+    "组织机构": null,
+    "时间": null,
+    "事件": null
+  },
+  "description": "实体抽取配置，支持命名实体识别（NER）任务"
+}
+
