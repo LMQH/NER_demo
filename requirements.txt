@@ -19,3 +19,7 @@ multiprocess>=0.70.0
 xxhash>=3.0.0
 cryptography>=41.0.5,<44.0.0
 urllib3>=1.24.2,<2.4.0
+fastapi>=0.104.0
+uvicorn[standard]>=0.24.0
+python-multipart>=0.0.6
+requests>=2.28.0

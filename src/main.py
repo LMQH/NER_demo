@@ -1,19 +1,26 @@
 """
-NER Demo主程序
+NER Demo核心业务逻辑模块
+
+本模块提供NERDemo类，包含实体抽取的核心业务逻辑。
+现在项目使用FastAPI服务模式（app.py），不再使用命令行脚本模式。
 """
 import json
-import os
 from pathlib import Path
 from datetime import datetime
 from typing import Dict, Any
 
 from .config_manager import ConfigManager
 from .file_reader import FileReader
-from .ner_model import NERModel
+from .siamese_uie_model import SiameseUIEModel
 
 
 class NERDemo:
-    """NER Demo主类"""
+    """
+    NER Demo核心业务类
+    
+    提供文件处理和实体抽取的核心功能。
+    注意：现在推荐使用FastAPI服务（app.py）进行API调用，而不是直接使用此类。
+    """
     
     def __init__(self):
         """初始化NER Demo"""
@@ -29,12 +36,12 @@ class NERDemo:
         self._load_entity_config()
     
     def _init_model(self):
-        """初始化NER模型"""
+        """初始化SiameseUIE模型"""
         model_path = self.config_manager.get_model_path()
         print(f"模型路径: {model_path}")
         
         try:
-            self.ner_model = NERModel(model_path)
+            self.ner_model = SiameseUIEModel(model_path)
         except Exception as e:
             raise Exception(f"模型初始化失败: {str(e)}")
     
@@ -70,12 +77,15 @@ class NERDemo:
         
         return results
     
-    def save_results(self, results: Dict[str, Any]):
+    def save_results(self, results: Dict[str, Any]) -> str:
         """
         保存结果到输出目录
         
         Args:
             results: 处理结果字典
+            
+        Returns:
+            输出文件路径
         """
         output_dir = Path(self.config_manager.get_output_dir())
         output_dir.mkdir(exist_ok=True)
@@ -98,42 +108,3 @@ class NERDemo:
         
         print(f"\n结果已保存到: {output_file}")
         return str(output_file)
-
-
-def main():
-    """主函数"""
-    print("=" * 60)
-    print("NER Demo 启动")
-    print("=" * 60)
-    
-    try:
-        # 创建NER Demo实例
-        demo = NERDemo()
-        
-        # 处理文件
-        results = demo.process_files()
-        
-        if results:
-            # 保存结果
-            output_file = demo.save_results(results)
-            print(f"\n处理完成！共处理 {len(results)} 个文件")
-            print(f"结果文件: {output_file}")
-        else:
-            print("\n没有文件需要处理")
-        
-        print("=" * 60)
-        print("程序执行完成")
-        print("=" * 60)
-        
-    except Exception as e:
-        print(f"\n错误: {str(e)}")
-        import traceback
-        traceback.print_exc()
-        return 1
-    
-    return 0
-
-
-if __name__ == "__main__":
-    exit(main())
-

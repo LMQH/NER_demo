@@ -1,0 +1,263 @@
+{
+  "info": {
+    "name": "NER Demo API",
+    "description": "NER Demo API测试集合",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "健康检查",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "http://localhost:8000/api/health",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "8000",
+          "path": ["api", "health"]
+        }
+      }
+    },
+    {
+      "name": "获取模型列表",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "http://localhost:8000/api/models",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "8000",
+          "path": ["api", "models"]
+        }
+      }
+    },
+    {
+      "name": "实体抽取 - 默认模型",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"text\": \"1944年毕业于北大的名古屋铁道会长谷口清太郎等人在日本积极筹资。\",\n  \"schema\": {\n    \"人物\": null,\n    \"地理位置\": null,\n    \"组织机构\": null\n  }\n}"
+        },
+        "url": {
+          "raw": "http://localhost:8000/api/extract",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "8000",
+          "path": ["api", "extract"]
+        }
+      }
+    },
+    {
+      "name": "实体抽取 - 指定nlp_structbert模型",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"text\": \"在北京冬奥会自由式滑雪中，中国选手谷爱凌获得金牌。\",\n  \"model\": \"nlp_structbert_siamese-uie_chinese-base\",\n  \"schema\": {\n    \"人物\": null,\n    \"地理位置\": null,\n    \"事件\": null\n  }\n}"
+        },
+        "url": {
+          "raw": "http://localhost:8000/api/extract",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "8000",
+          "path": ["api", "extract"]
+        }
+      }
+    },
+    {
+      "name": "实体抽取 - 指定chinese-macbert模型",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"text\": \"1944年毕业于北大的名古屋铁道会长谷口清太郎等人在日本积极筹资。\",\n  \"model\": \"chinese-macbert-base\",\n  \"schema\": {\n    \"人物\": null,\n    \"地理位置\": null,\n    \"组织机构\": null\n  }\n}"
+        },
+        "url": {
+          "raw": "http://localhost:8000/api/extract",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "8000",
+          "path": ["api", "extract"]
+        }
+      }
+    },
+    {
+      "name": "关系抽取示例",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"text\": \"在北京冬奥会自由式滑雪中，中国选手谷爱凌获得金牌。\",\n  \"model\": \"nlp_structbert_siamese-uie_chinese-base\",\n  \"schema\": {\n    \"人物\": {\n      \"比赛项目(赛事名称)\": null,\n      \"参赛地点(城市)\": null,\n      \"获奖时间(时间)\": null\n    }\n  }\n}"
+        },
+        "url": {
+          "raw": "http://localhost:8000/api/extract",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "8000",
+          "path": ["api", "extract"]
+        }
+      }
+    },
+    {
+      "name": "切换模型",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"model\": \"chinese-macbert-base\"\n}"
+        },
+        "url": {
+          "raw": "http://localhost:8000/api/model/switch",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "8000",
+          "path": ["api", "model", "switch"]
+        }
+      }
+    },
+    {
+      "name": "批量处理 - 文件内容列表",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"files\": [\n    {\n      \"filename\": \"example1.txt\",\n      \"content\": \"1944年毕业于北大的名古屋铁道会长谷口清太郎等人在日本积极筹资，共筹款2.7亿日元。\"\n    },\n    {\n      \"filename\": \"example2.txt\",\n      \"content\": \"在北京冬奥会自由式滑雪中，中国选手谷爱凌获得金牌。\"\n    }\n  ],\n  \"model\": \"nlp_structbert_siamese-uie_chinese-base\",\n  \"schema\": {\n    \"人物\": null,\n    \"地理位置\": null,\n    \"组织机构\": null,\n    \"时间\": null\n  }\n}"
+        },
+        "url": {
+          "raw": "http://localhost:8000/api/batch/extract",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "8000",
+          "path": ["api", "batch", "extract"]
+        }
+      }
+    },
+    {
+      "name": "批量处理 - 文件名列表（从data目录读取）",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"file_names\": [\"example.txt\"],\n  \"model\": \"nlp_structbert_siamese-uie_chinese-base\"\n}"
+        },
+        "url": {
+          "raw": "http://localhost:8000/api/batch/extract",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "8000",
+          "path": ["api", "batch", "extract"]
+        },
+        "description": "使用file_names字段时，schema字段可选，默认使用entity_config.json中的配置"
+      }
+    },
+    {
+      "name": "文件上传 - 单个文件",
+      "request": {
+        "method": "POST",
+        "header": [],
+        "body": {
+          "mode": "formdata",
+          "formdata": [
+            {
+              "key": "file",
+              "type": "file",
+              "src": [],
+              "description": "选择要上传的文件（支持 .txt, .md, .docx, .doc, .pdf）"
+            },
+            {
+              "key": "overwrite",
+              "value": "true",
+              "type": "text",
+              "description": "如果文件已存在是否覆盖（true/false，默认true，直接覆盖并保留原文件名）"
+            }
+          ]
+        },
+        "url": {
+          "raw": "http://localhost:8000/api/upload",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "8000",
+          "path": ["api", "upload"]
+        },
+        "description": "上传单个文件到data目录，保留原文件名，默认覆盖已存在的文件。\n\n注意：在Postman中需要切换到Body标签，选择form-data模式，然后：\n1. 在Key列输入'file'，类型选择'File'\n2. 点击'Select Files'选择要上传的文件\n3. （可选）添加'overwrite'字段，值为'true'（默认）或'false'"
+      }
+    },
+    {
+      "name": "文件上传 - 多个文件",
+      "request": {
+        "method": "POST",
+        "header": [],
+        "body": {
+          "mode": "formdata",
+          "formdata": [
+            {
+              "key": "files",
+              "type": "file",
+              "src": [],
+              "description": "选择要上传的多个文件（支持 .txt, .md, .docx, .doc, .pdf）"
+            },
+            {
+              "key": "overwrite",
+              "value": "true",
+              "type": "text",
+              "description": "如果文件已存在是否覆盖（true/false，默认true，直接覆盖并保留原文件名）"
+            }
+          ]
+        },
+        "url": {
+          "raw": "http://localhost:8000/api/upload/multiple",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "8000",
+          "path": ["api", "upload", "multiple"]
+        },
+        "description": "批量上传多个文件到data目录，保留原文件名，默认覆盖已存在的文件。\n\n注意：在Postman中需要切换到Body标签，选择form-data模式，然后：\n1. 在Key列输入'files'，类型选择'File'\n2. 点击'Select Files'选择多个要上传的文件\n3. （可选）添加'overwrite'字段，值为'true'（默认）或'false'"
+      }
+    }
+  ]
+}

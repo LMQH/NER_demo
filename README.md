@@ -16,6 +16,8 @@
 - ✅ 自动识别环境（基于域名）
 - ✅ 结果输出为JSON格式
 - ✅ 完善的错误处理和日志记录
+- ✅ **FastAPI RESTful API服务**：提供HTTP接口，支持批量处理、文件上传等功能
+- ✅ **自动API文档**：Swagger UI和ReDoc交互式文档
 
 ## 项目结构
 
@@ -28,12 +30,14 @@ NER_demo/
 ├── src/                   # 源代码文件夹
 │   ├── config_manager.py  # 配置管理模块
 │   ├── file_reader.py     # 文件读取模块
-│   ├── ner_model.py       # NER模型调用模块
+│   ├── siamese_uie_model.py  # SiameseUIE模型调用模块
+│   ├── macbert_model.py      # MacBERT模型调用模块
 │   └── main.py            # 主程序入口
 ├── entity_config.json     # 实体配置文件
+├── app.py                # FastAPI API服务主程序
 ├── requirements.txt       # Python依赖
-├── start.py              # Windows启动脚本
-├── start.sh              # Linux启动脚本
+├── start.py              # Windows启动脚本（命令行模式）
+├── start.sh              # Linux启动脚本（命令行模式）
 ├── test/                  # 测试脚本目录
 │   └── test_model_load.py # 模型加载测试脚本
 └── README.md             # 项目说明文档
@@ -153,11 +157,34 @@ MODEL_DOWNLOADED=true
 
 ## 使用方法
 
-### 1. 准备数据文件
+本项目提供两种使用方式：
 
-将需要处理的文件（TXT、MD、WORD、PDF格式）放入 `data/` 文件夹。
+### 方式1：API服务模式（推荐）
 
-### 2. 运行程序
+使用 FastAPI 提供的 RESTful API 接口，支持批量处理和文件上传。
+
+#### 1. 启动API服务
+
+```bash
+python app.py
+```
+
+服务启动后，默认运行在：`http://localhost:8000`
+
+#### 2. 访问API文档
+
+FastAPI 自动生成了交互式API文档：
+
+- **Swagger UI**: http://localhost:8000/docs
+- **ReDoc**: http://localhost:8000/redoc
+
+#### 3. 使用API接口
+
+详见 `QUICKSTART.md` 文件了解详细的API使用方法。
+
+### 方式2：命令行模式（已废弃）
+
+> ⚠️ **注意**: 命令行模式已废弃，不再自动处理data目录下的文件。推荐使用API服务模式。
 
 **Windows系统：**
 ```bash
@@ -175,9 +202,10 @@ chmod +x start.sh
 python -m src.main
 ```
 
-### 3. 查看结果
+### 查看结果
 
-处理完成后，结果会保存在 `output/` 文件夹下，文件名为 `ner_results_YYYYMMDD_HHMMSS.json`。
+- **API模式**：结果直接通过API返回
+- **命令行模式**：结果保存在 `output/` 文件夹下，文件名为 `ner_results_YYYYMMDD_HHMMSS.json`
 
 ## 输出格式
 

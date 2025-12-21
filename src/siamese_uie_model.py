@@ -1,5 +1,5 @@
 """
-NER模型调用模块
+SiameseUIE模型调用模块
 使用ModelScope的SiameseUIE模型进行实体抽取
 支持命名实体识别、关系抽取、事件抽取、属性情感抽取等多种任务
 """
@@ -10,12 +10,12 @@ from modelscope.pipelines import pipeline
 from modelscope.utils.constant import Tasks
 
 
-class NERModel:
-    """NER模型封装类，支持多种信息抽取任务"""
+class SiameseUIEModel:
+    """SiameseUIE模型封装类，支持多种信息抽取任务"""
     
     def __init__(self, model_path: str, use_model_id: bool = False):
         """
-        初始化NER模型
+        初始化SiameseUIE模型
         
         Args:
             model_path: 模型路径，可以是本地路径或ModelScope模型ID

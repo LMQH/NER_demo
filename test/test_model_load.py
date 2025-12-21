@@ -56,9 +56,9 @@ def test_model_loading():
         
         # 4. 测试模型初始化
         print("\n[步骤4] 测试模型初始化...")
-        from src.ner_model import NERModel
+        from src.siamese_uie_model import SiameseUIEModel
         print(f"正在初始化模型，这可能需要一些时间...")
-        ner_model = NERModel(model_path)
+        ner_model = SiameseUIEModel(model_path)
         print(f"[OK] 模型初始化成功！")
         
         # 5. 测试简单的实体抽取
