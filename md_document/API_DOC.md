@@ -2,7 +2,12 @@
 
 ## 概述
 
-NER Demo API 提供了基于Flask的RESTful接口，支持前端传入文本和模型选择进行命名实体识别（NER）任务。
+NER Demo API 提供了基于FastAPI的RESTful接口，支持前端传入文本和模型选择进行命名实体识别（NER）任务。
+
+**支持的模型：**
+- `chinese-macbert-base` - MacBERT基础模型，支持命名实体识别
+- `nlp_structbert_siamese-uie_chinese-base` - SiameseUIE通用信息抽取模型，支持NER、关系抽取、事件抽取、属性情感抽取
+- `mgeo_geographic_composition_analysis_chinese_base` - MGeo地理组成分析模型，支持地理实体识别和地理组成分析
 
 ## 启动服务
 
@@ -16,7 +21,9 @@ python app.py
 flask --app app run --host=0.0.0.0 --port=5000
 ```
 
-服务启动后，默认运行在：`http://localhost:5000`
+服务启动后，默认运行在：`http://localhost:8000`
+
+**注意：** 本文档中的端口号已更新为8000（FastAPI默认端口），如果您的服务运行在其他端口，请相应调整URL。
 
 ## API接口列表
 
@@ -28,7 +35,7 @@ flask --app app run --host=0.0.0.0 --port=5000
 
 **请求示例：**
 ```bash
-curl http://localhost:5000/api/health
+curl http://localhost:8000/api/health
 ```
 
 **响应示例：**
@@ -50,7 +57,7 @@ curl http://localhost:5000/api/health
 
 **请求示例：**
 ```bash
-curl http://localhost:5000/api/models
+curl http://localhost:8000/api/models
 ```
 
 **响应示例：**
@@ -59,9 +66,10 @@ curl http://localhost:5000/api/models
   "status": "success",
   "models": [
     "chinese-macbert-base",
-    "nlp_structbert_siamese-uie_chinese-base"
+    "nlp_structbert_siamese-uie_chinese-base",
+    "mgeo_geographic_composition_analysis_chinese_base"
   ],
-  "count": 2
+  "count": 3
 }
 ```
 
@@ -94,15 +102,19 @@ Content-Type: application/json
 **请求参数说明：**
 - `text` (必需): 待处理的文本内容
 - `model` (可选): 模型名称，默认为 `nlp_structbert_siamese-uie_chinese-base`
-  - 可选值：`chinese-macbert-base` 或 `nlp_structbert_siamese-uie_chinese-base`
+  - 可选值：
+    - `chinese-macbert-base` - MacBERT基础模型，支持命名实体识别
+    - `nlp_structbert_siamese-uie_chinese-base` - SiameseUIE通用信息抽取模型，支持NER、关系抽取、事件抽取、属性情感抽取
+    - `mgeo_geographic_composition_analysis_chinese_base` - MGeo地理组成分析模型，支持地理实体识别和地理组成分析
 - `schema` (必需): 实体抽取配置，定义要抽取的实体类型
   - 命名实体识别格式：`{"实体类型": null}`
   - 关系抽取格式：`{"主语实体": {"关系(宾语实体)": null}}`
   - 事件抽取格式：`{"事件类型(触发词)": {"参数类型": null}}`
+  - 地理组成分析格式：`{"地理实体": null, "地理位置": null, "地理组成": null}`
 
 **请求示例（curl）：**
 ```bash
-curl -X POST http://localhost:5000/api/extract \
+curl -X POST http://localhost:8000/api/extract \
   -H "Content-Type: application/json" \
   -d '{
     "text": "1944年毕业于北大的名古屋铁道会长谷口清太郎等人在日本积极筹资。",
@@ -187,7 +199,7 @@ Content-Type: application/json
 
 **请求示例（curl）：**
 ```bash
-curl -X POST http://localhost:5000/api/model/switch \
+curl -X POST http://localhost:8000/api/model/switch \
   -H "Content-Type: application/json" \
   -d '{
     "model": "chinese-macbert-base"
@@ -210,7 +222,7 @@ curl -X POST http://localhost:5000/api/model/switch \
 ### 1. 健康检查
 
 **方法：** GET  
-**URL：** `http://localhost:5000/api/health`  
+**URL：** `http://localhost:8000/api/health`  
 **Headers：** 无需特殊请求头
 
 ---
@@ -218,7 +230,7 @@ curl -X POST http://localhost:5000/api/model/switch \
 ### 2. 获取模型列表
 
 **方法：** GET  
-**URL：** `http://localhost:5000/api/models`  
+**URL：** `http://localhost:8000/api/models`  
 **Headers：** 无需特殊请求头
 
 ---
@@ -226,7 +238,7 @@ curl -X POST http://localhost:5000/api/model/switch \
 ### 3. 实体抽取 - 使用默认模型
 
 **方法：** POST  
-**URL：** `http://localhost:5000/api/extract`  
+**URL：** `http://localhost:8000/api/extract`  
 **Headers：**
 ```
 Content-Type: application/json
@@ -249,7 +261,7 @@ Content-Type: application/json
 ### 4. 实体抽取 - 指定模型
 
 **方法：** POST  
-**URL：** `http://localhost:5000/api/extract`  
+**URL：** `http://localhost:8000/api/extract`  
 **Headers：**
 ```
 Content-Type: application/json
@@ -271,7 +283,33 @@ Content-Type: application/json
 
 ---
 
-### 5. 关系抽取示例
+### 5. 实体抽取 - 使用MGeo地理组成分析模型
+
+**方法：** POST  
+**URL：** `http://localhost:5000/api/extract`  
+**Headers：**
+```
+Content-Type: application/json
+```
+
+**Body（raw JSON）：**
+```json
+{
+  "text": "北京市位于华北平原，是中华人民共和国的首都。中国由34个省级行政区组成，包括23个省、5个自治区、4个直辖市和2个特别行政区。",
+  "model": "mgeo_geographic_composition_analysis_chinese_base",
+  "schema": {
+    "地理实体": null,
+    "地理位置": null,
+    "地理组成": null
+  }
+}
+```
+
+**说明：** MGeo模型专门用于地理实体识别和地理组成分析任务，适合处理包含地理信息的文本。
+
+---
+
+### 6. 关系抽取示例
 
 **方法：** POST  
 **URL：** `http://localhost:5000/api/extract`  
@@ -297,7 +335,41 @@ Content-Type: application/json
 
 ---
 
-### 6. 切换模型
+### 7. 切换模型
+
+**方法：** POST  
+**URL：** `http://localhost:5000/api/model/switch`  
+**Headers：**
+```
+Content-Type: application/json
+```
+
+**Body（raw JSON）：**
+```json
+{
+  "model": "chinese-macbert-base"
+}
+```
+
+---
+
+### 8. 切换模型 - MGeo地理组成分析
+
+**方法：** POST  
+**URL：** `http://localhost:5000/api/model/switch`  
+**Headers：**
+```
+Content-Type: application/json
+```
+
+**Body（raw JSON）：**
+```json
+{
+  "model": "mgeo_geographic_composition_analysis_chinese_base"
+}
+```
+
+---
 
 **方法：** POST  
 **URL：** `http://localhost:5000/api/model/switch`  
@@ -373,6 +445,23 @@ Content-Type: application/json
 }
 ```
 
+### 地理组成分析（MGeo模型）
+
+抽取地理实体和地理组成信息：
+
+```json
+{
+  "地理实体": null,
+  "地理位置": null,
+  "地理组成": null
+}
+```
+
+**说明：** 
+- `地理实体`: 识别文本中的地理实体，如城市、省份、国家等
+- `地理位置`: 识别地理位置信息
+- `地理组成`: 分析地理组成关系，如"中国由34个省级行政区组成"
+
 ---
 
 ## 错误处理
@@ -419,8 +508,8 @@ API使用标准的HTTP状态码和JSON错误响应：
 ### 使用Gunicorn
 
 ```bash
-pip install gunicorn
-gunicorn -w 4 -b 0.0.0.0:5000 app:app
+pip install gunicorn uvicorn
+gunicorn -w 4 -k uvicorn.workers.UvicornWorker -b 0.0.0.0:8000 app:app
 ```
 
 ### 使用Docker（可选）
@@ -432,7 +521,7 @@ WORKDIR /app
 COPY requirements.txt .
 RUN pip install -r requirements.txt
 COPY . .
-CMD ["gunicorn", "-w", "4", "-b", "0.0.0.0:5000", "app:app"]
+CMD ["gunicorn", "-w", "4", "-k", "uvicorn.workers.UvicornWorker", "-b", "0.0.0.0:8000", "app:app"]
 ```
 
 ---
@@ -445,7 +534,7 @@ CMD ["gunicorn", "-w", "4", "-b", "0.0.0.0:5000", "app:app"]
 import requests
 
 # API基础URL
-BASE_URL = "http://localhost:5000"
+BASE_URL = "http://localhost:8000"
 
 # 实体抽取
 response = requests.post(
@@ -469,7 +558,7 @@ print(result)
 
 ```javascript
 // 使用fetch API
-fetch('http://localhost:5000/api/extract', {
+fetch('http://localhost:8000/api/extract', {
   method: 'POST',
   headers: {
     'Content-Type': 'application/json',

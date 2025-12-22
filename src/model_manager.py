@@ -6,6 +6,7 @@ from pathlib import Path
 from typing import Dict, Optional, Union
 from .siamese_uie_model import SiameseUIEModel
 from .macbert_model import MacBERTModel
+from .mgeo_geographic_composition_analysis_chinese_base_model import MGeoGeographicCompositionAnalysisModel
 
 
 class ModelManager:
@@ -14,13 +15,15 @@ class ModelManager:
     # 支持的模型映射
     SUPPORTED_MODELS = {
         'chinese-macbert-base': 'model/chinese-macbert-base',
-        'nlp_structbert_siamese-uie_chinese-base': 'model/nlp_structbert_siamese-uie_chinese-base'
+        'nlp_structbert_siamese-uie_chinese-base': 'model/nlp_structbert_siamese-uie_chinese-base',
+        'mgeo_geographic_composition_analysis_chinese_base': 'model/mgeo_geographic_composition_analysis_chinese_base'
     }
     
     # 模型类型映射（指定使用哪个模型类）
     MODEL_TYPES = {
         'chinese-macbert-base': 'macbert',  # 使用MacBERTModel
-        'nlp_structbert_siamese-uie_chinese-base': 'siamese_uie'  # 使用SiameseUIEModel
+        'nlp_structbert_siamese-uie_chinese-base': 'siamese_uie',  # 使用SiameseUIEModel
+        'mgeo_geographic_composition_analysis_chinese_base': 'mgeo'  # 使用MGeoGeographicCompositionAnalysisModel
     }
     
     def __init__(self, base_path: str = None):
@@ -36,7 +39,7 @@ class ModelManager:
             # 自动检测项目根目录（假设在src目录下）
             self.base_path = Path(__file__).parent.parent
         
-        self.models: Dict[str, Union[SiameseUIEModel, MacBERTModel]] = {}
+        self.models: Dict[str, Union[SiameseUIEModel, MacBERTModel, MGeoGeographicCompositionAnalysisModel]] = {}
         self.current_model_name: Optional[str] = None
     
     def get_model_path(self, model_name: str) -> Path:
@@ -66,7 +69,7 @@ class ModelManager:
         
         return model_path
     
-    def load_model(self, model_name: str, force_reload: bool = False) -> Union[SiameseUIEModel, MacBERTModel]:
+    def load_model(self, model_name: str, force_reload: bool = False) -> Union[SiameseUIEModel, MacBERTModel, MGeoGeographicCompositionAnalysisModel]:
         """
         加载模型（支持缓存）
         
@@ -75,7 +78,7 @@ class ModelManager:
             force_reload: 是否强制重新加载（即使已缓存）
             
         Returns:
-            SiameseUIEModel或MacBERTModel实例
+            SiameseUIEModel、MacBERTModel或MGeoGeographicCompositionAnalysisModel实例
         """
         # 检查模型是否已加载
         if model_name in self.models and not force_reload:
@@ -93,6 +96,8 @@ class ModelManager:
             
             if model_type == 'macbert':
                 model = MacBERTModel(str(model_path))
+            elif model_type == 'mgeo':
+                model = MGeoGeographicCompositionAnalysisModel(str(model_path))
             else:  # siamese_uie
                 model = SiameseUIEModel(str(model_path))
             
@@ -105,7 +110,7 @@ class ModelManager:
             print(error_msg)
             raise Exception(error_msg)
     
-    def get_model(self, model_name: str = None) -> Union[SiameseUIEModel, MacBERTModel]:
+    def get_model(self, model_name: str = None) -> Union[SiameseUIEModel, MacBERTModel, MGeoGeographicCompositionAnalysisModel]:
         """
         获取模型实例
         
@@ -113,7 +118,7 @@ class ModelManager:
             model_name: 模型名称，如果为None则返回当前模型
             
         Returns:
-            SiameseUIEModel或MacBERTModel实例
+            SiameseUIEModel、MacBERTModel或MGeoGeographicCompositionAnalysisModel实例
         """
         if model_name is None:
             if self.current_model_name is None:

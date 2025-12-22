@@ -103,6 +103,30 @@
       }
     },
     {
+      "name": "实体抽取 - 指定mgeo地理组成分析模型",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"text\": \"北京市位于华北平原，是中华人民共和国的首都。中国由34个省级行政区组成，包括23个省、5个自治区、4个直辖市和2个特别行政区。\",\n  \"model\": \"mgeo_geographic_composition_analysis_chinese_base\",\n  \"schema\": {\n    \"地理实体\": null,\n    \"地理位置\": null,\n    \"地理组成\": null\n  }\n}"
+        },
+        "url": {
+          "raw": "http://localhost:8000/api/extract",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "8000",
+          "path": ["api", "extract"]
+        },
+        "description": "使用MGeo地理组成分析模型进行地理实体识别和地理组成分析"
+      }
+    },
+    {
       "name": "关系抽取示例",
       "request": {
         "method": "POST",
@@ -126,7 +150,7 @@
       }
     },
     {
-      "name": "切换模型",
+      "name": "切换模型 - chinese-macbert",
       "request": {
         "method": "POST",
         "header": [
@@ -146,6 +170,30 @@
           "port": "8000",
           "path": ["api", "model", "switch"]
         }
+      }
+    },
+    {
+      "name": "切换模型 - mgeo地理组成分析",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"model\": \"mgeo_geographic_composition_analysis_chinese_base\"\n}"
+        },
+        "url": {
+          "raw": "http://localhost:8000/api/model/switch",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "8000",
+          "path": ["api", "model", "switch"]
+        },
+        "description": "切换到MGeo地理组成分析模型"
       }
     },
     {
@@ -193,6 +241,30 @@
           "path": ["api", "batch", "extract"]
         },
         "description": "使用file_names字段时，schema字段可选，默认使用entity_config.json中的配置"
+      }
+    },
+    {
+      "name": "批量处理 - 使用mgeo模型（地理组成分析）",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"files\": [\n    {\n      \"filename\": \"geographic1.txt\",\n      \"content\": \"北京市位于华北平原，是中华人民共和国的首都。\"\n    },\n    {\n      \"filename\": \"geographic2.txt\",\n      \"content\": \"中国由34个省级行政区组成，包括23个省、5个自治区、4个直辖市和2个特别行政区。\"\n    }\n  ],\n  \"model\": \"mgeo_geographic_composition_analysis_chinese_base\",\n  \"schema\": {\n    \"地理实体\": null,\n    \"地理位置\": null,\n    \"地理组成\": null\n  }\n}"
+        },
+        "url": {
+          "raw": "http://localhost:8000/api/batch/extract",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "8000",
+          "path": ["api", "batch", "extract"]
+        },
+        "description": "使用MGeo地理组成分析模型进行批量地理实体抽取"
       }
     },
     {

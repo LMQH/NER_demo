@@ -19,18 +19,38 @@ logging.basicConfig(
 logger = logging.getLogger("Env_Loader")
 
 
+def get_local_ip() -> Optional[str]:
+    """
+    获取本地IP地址
+    
+    Returns:
+        本地IP地址或None
+    """
+    try:
+        # 方法1: 通过连接外部地址获取本机IP
+        s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        s.connect(('8.8.8.8', 80))
+        ip = s.getsockname()[0]
+        s.close()
+        return ip
+    except Exception as e:
+        logger.warning(f"获取本地IP地址失败: {e}")
+        return None
+
+
 def get_current_domain() -> Optional[str]:
     """
-    获取当前域名
+    获取当前域名或IP地址
     
     优先级：
     1. 环境变量 HTTP_HOST 或 SERVER_NAME（Web应用）
     2. 环境变量 HOSTNAME
     3. socket.gethostname()
-    4. 从请求头获取（如果可用）
+    4. 本地IP地址
+    5. 从请求头获取（如果可用）
     
     Returns:
-        当前域名或None
+        当前域名或IP地址或None
     """
     # 优先从环境变量获取（适用于Web应用）
     domain = os.getenv('HTTP_HOST') or os.getenv('SERVER_NAME') or os.getenv('HOSTNAME')
@@ -45,6 +65,12 @@ def get_current_domain() -> Optional[str]:
         return hostname
     except Exception as e:
         logger.warning(f"获取主机名失败: {e}")
+    
+    # 如果无法获取域名，尝试获取本地IP地址
+    local_ip = get_local_ip()
+    if local_ip:
+        logger.info(f"获取本地IP地址: {local_ip}")
+        return local_ip
     
     return None
 
@@ -114,20 +140,53 @@ def load_config() -> Dict[str, Any]:
             if domain and domain.strip():
                 domain = domain.strip()
                 # 精确匹配或包含匹配
-                if domain == current_domain or domain in current_domain or current_domain in domain:
-                    logger.info(f"当前域名 {current_domain} 在生产环境域名列表中，加载 show.env")
+                is_match = (
+                    domain == current_domain or 
+                    domain in current_domain or 
+                    current_domain in domain
+                )
+                # 如果是IP地址，进行精确匹配
+                if not is_match:
+                    try:
+                        # 检查是否为IP地址格式
+                        import ipaddress
+                        domain_ip = ipaddress.ip_address(domain)
+                        current_ip = ipaddress.ip_address(current_domain)
+                        is_match = domain_ip == current_ip
+                    except (ValueError, AttributeError):
+                        # 不是有效的IP地址，继续其他匹配方式
+                        pass
+                
+                if is_match:
+                    logger.info(f"当前域名/IP {current_domain} 在生产环境域名列表中，加载 show.env")
                     return load_env_file(str(show_env_file))
         
         # 检查是否在开发环境域名列表中
         for domain in dev_domains:
             if domain and domain.strip():
                 domain = domain.strip()
-                # 精确匹配或包含匹配，或特殊处理 localhost
-                if (domain == current_domain or 
+                # 精确匹配或包含匹配，或特殊处理 localhost 和 IP地址
+                is_match = (
+                    domain == current_domain or 
                     domain in current_domain or 
                     current_domain in domain or
-                    (domain == 'localhost' and current_domain in ['localhost', '127.0.0.1'])):
-                    logger.info(f"当前域名 {current_domain} 在开发环境域名列表中，加载 dev.env")
+                    (domain == 'localhost' and current_domain in ['localhost', '127.0.0.1']) or
+                    (domain == '127.0.0.1' and current_domain in ['localhost', '127.0.0.1'])
+                )
+                # 如果是IP地址，进行精确匹配
+                if not is_match:
+                    try:
+                        # 检查是否为IP地址格式
+                        import ipaddress
+                        domain_ip = ipaddress.ip_address(domain)
+                        current_ip = ipaddress.ip_address(current_domain)
+                        is_match = domain_ip == current_ip
+                    except (ValueError, AttributeError):
+                        # 不是有效的IP地址，继续其他匹配方式
+                        pass
+                
+                if is_match:
+                    logger.info(f"当前域名/IP {current_domain} 在开发环境域名列表中，加载 dev.env")
                     return load_env_file(str(dev_env_file))
         
         # 默认使用开发环境配置
