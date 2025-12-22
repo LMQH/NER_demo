@@ -22,6 +22,7 @@ os.chdir(project_root)
 from src.model_manager import ModelManager
 from src.file_reader import FileReader
 from src.config_manager import ConfigManager
+from src.text_preprocessor import TextPreprocessor
 
 # 创建FastAPI应用
 app = FastAPI(
@@ -43,6 +44,21 @@ app.add_middleware(
 model_manager = ModelManager(base_path=str(project_root))
 file_reader = FileReader()
 config_manager = ConfigManager()
+
+# 初始化文本预处理器
+# 注意：config_manager.load_config() 会将配置加载到环境变量中
+try:
+    # 从环境变量获取API key（config_manager已经加载了配置）
+    api_key = os.getenv('DASHSCOPE_API_KEY')
+    if api_key and api_key.strip() and api_key != 'your_api_key_here':
+        text_preprocessor = TextPreprocessor(api_key=api_key)
+        print("文本预处理器初始化成功")
+    else:
+        text_preprocessor = None
+        print("警告: 未配置DASHSCOPE_API_KEY或API key无效，文本预处理功能将不可用")
+except Exception as e:
+    print(f"警告: 文本预处理器初始化失败: {str(e)}")
+    text_preprocessor = None
 
 
 # ==================== Pydantic模型定义 ====================
@@ -128,6 +144,22 @@ class MultipleUploadResponse(BaseModel):
     status: str
     data: Optional[Dict[str, Any]] = None
     timestamp: str
+
+
+class PreprocessRequest(BaseModel):
+    """文本预处理请求"""
+    Content: Union[str, List[str]] = Field(
+        ..., 
+        description="待预处理的文本，格式：地址信息 人名 电话。支持单个字符串或字符串数组"
+    )
+
+
+class PreprocessResponse(BaseModel):
+    """文本预处理响应"""
+    Content: Union[str, List[str]] = Field(
+        ..., 
+        description="处理后的文本，格式：处理后的地址信息 人名 电话。返回格式与输入格式一致"
+    )
 
 
 # ==================== API路由 ====================
@@ -541,6 +573,114 @@ async def upload_multiple_files(
         raise HTTPException(status_code=500, detail=f"服务器内部错误: {str(e)}")
 
 
+@app.post("/api/preprocess", response_model=PreprocessResponse, tags=["文本预处理"])
+async def preprocess_text(request: PreprocessRequest):
+    """
+    文本预处理接口
+    
+    对输入文本进行错字纠错和地址信息补全。
+    
+    请求格式（单条）：
+    {
+        "Content": "广东省深圳市龙岗区坂田街道长坑路西2巷2号202 黄大大 18273778575"
+    }
+    
+    请求格式（多条）：
+    {
+        "Content": [
+            "广东省深圳市龙岗区坂田街道长坑路西2巷2号202 黄大大 18273778575",
+            "广东省深圳市龙岗区坂田街道长坑路西2巷2号202 黄大大 18273778575"
+        ]
+    }
+    
+    功能：
+    1. 错字纠错：纠正地址文本中的错别字
+    2. 地址补全：提取并补全地址信息（省份、城市、区县、街道、详细地址）
+    3. 保留人名和电话：不处理人名和电话，保持原样
+    
+    返回格式（单条）：
+    {
+        "Content": "处理后的地址信息 黄大大 18273778575"
+    }
+    
+    返回格式（多条）：
+    {
+        "Content": [
+            "处理后的地址信息 黄大大 18273778575",
+            "处理后的地址信息 黄大大 18273778575"
+        ]
+    }
+    """
+    try:
+        if not text_preprocessor:
+            raise HTTPException(
+                status_code=503,
+                detail="文本预处理功能不可用，请检查DASHSCOPE_API_KEY配置"
+            )
+        
+        # 判断输入是字符串还是列表
+        is_list = isinstance(request.Content, list)
+        
+        if is_list:
+            # 批量处理
+            if not request.Content:
+                raise HTTPException(status_code=400, detail="Content数组不能为空")
+            
+            # 验证数组中的每个元素
+            for i, content in enumerate(request.Content):
+                if not content or not str(content).strip():
+                    raise HTTPException(
+                        status_code=400, 
+                        detail=f"Content数组第{i+1}个元素不能为空"
+                    )
+            
+            # 批量处理所有文本
+            processed_contents = []
+            for content in request.Content:
+                result = text_preprocessor.preprocess(str(content))
+                
+                # 检查是否有错误
+                if "error" in result:
+                    # 即使有错误，也返回原格式，但使用原始文本
+                    processed_contents.append(result.get("original_text", str(content)))
+                else:
+                    # 返回处理后的Content（保持原格式：地址 人名 电话）
+                    processed_content = result.get("corrected_text", str(content))
+                    processed_contents.append(processed_content)
+            
+            return {
+                "Content": processed_contents
+            }
+        else:
+            # 单个字符串处理（保持向后兼容）
+            if not request.Content or not str(request.Content).strip():
+                raise HTTPException(status_code=400, detail="Content字段不能为空")
+            
+            # 执行预处理
+            result = text_preprocessor.preprocess(str(request.Content))
+            
+            # 检查是否有错误
+            if "error" in result:
+                # 即使有错误，也返回原格式，但使用原始文本
+                return {
+                    "Content": result.get("original_text", str(request.Content))
+                }
+            
+            # 返回处理后的Content（保持原格式：地址 人名 电话）
+            processed_content = result.get("corrected_text", str(request.Content))
+            
+            return {
+                "Content": processed_content
+            }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=f"文本预处理失败: {str(e)}")
+
+
 if __name__ == "__main__":
     import uvicorn
     
@@ -548,6 +688,7 @@ if __name__ == "__main__":
     print("NER Demo API服务启动 (FastAPI)")
     print("=" * 60)
     print(f"支持的模型: {', '.join(model_manager.list_models())}")
+    print(f"文本预处理: {'已启用' if text_preprocessor else '未配置（需要DASHSCOPE_API_KEY）'}")
     print(f"API文档: http://localhost:8000/docs")
     print(f"API文档 (ReDoc): http://localhost:8000/redoc")
     print("=" * 60)

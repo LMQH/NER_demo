@@ -15,12 +15,14 @@
   - 事件抽取
   - 属性情感抽取
   - 地理组成分析
+- ✅ **文本预处理功能**：使用qwen-flash大模型进行地址错字纠错和补全，支持单条和批量处理
 - ✅ 通过JSON配置文件自定义实体类型和抽取任务
 - ✅ 环境配置管理（开发/生产环境）
 - ✅ 自动识别环境（基于域名）
 - ✅ 结果输出为JSON格式
 - ✅ 完善的错误处理和日志记录
 - ✅ **FastAPI RESTful API服务**：提供HTTP接口，支持批量处理、文件上传等功能
+- ✅ **文本预处理接口**：地址错字纠错和信息补全，保留人名和电话，支持单条和批量处理
 - ✅ **自动API文档**：Swagger UI和ReDoc交互式文档
 
 ## 项目结构
@@ -39,6 +41,7 @@ NER_demo/
 │   ├── siamese_uie_model.py  # SiameseUIE模型调用模块
 │   ├── macbert_model.py      # MacBERT模型调用模块
 │   ├── mgeo_geographic_composition_analysis_chinese_base_model.py  # MGeo地理组成分析模型调用模块
+│   ├── text_preprocessor.py  # 文本预处理模块（地址纠错和补全）
 │   └── main.py            # 主程序入口
 ├── entity_config.json     # 实体配置文件
 ├── app.py                # FastAPI API服务主程序
@@ -107,6 +110,11 @@ ENTITY_CONFIG_PATH=entity_config.json
 
 # 模型是否已下载（true/false）
 MODEL_DOWNLOADED=true
+
+# DashScope API密钥（用于文本预处理功能，qwen-flash模型）
+# 获取方式：https://dashscope.console.aliyun.com/apiKey
+# 如果不使用文本预处理功能，可以留空
+DASHSCOPE_API_KEY=your_api_key_here
 ```
 
 ### 3. 配置实体类型
@@ -380,6 +388,11 @@ python test/test_model_load.py
 
 7. **CUDA支持**：如果系统有CUDA支持，模型会自动使用GPU加速；否则使用CPU运行。
 
+8. **文本预处理功能**：需要配置 `DASHSCOPE_API_KEY` 才能使用文本预处理功能。
+   - 获取API Key：https://dashscope.console.aliyun.com/apiKey
+   - 在 `dev.env` 或 `.env` 文件中设置 `DASHSCOPE_API_KEY=your_api_key_here`
+   - 如果不使用文本预处理功能，可以留空
+
 ## 常见问题
 
 ### Q: 模型加载失败，提示 `NameError: name 'init_empty_weights' is not defined`？
@@ -542,6 +555,18 @@ A: 本项目支持以下任务类型：
 - **地址成分分析**：不需要schema参数，直接输入地址文本即可
   - 自动识别地址中的省份、城市、区县、街道、POI等成分
   - 适用于地址解析、地理实体识别等场景
+
+**文本预处理功能：**
+- **地址纠错和补全**：使用qwen-flash大模型对地址信息进行处理
+  - **单条处理**（向后兼容）：
+    - 请求格式：`{"Content": "地址信息 人名 电话"}`
+    - 返回格式：`{"Content": "处理后的地址信息 人名 电话"}`
+  - **批量处理**（新功能）：
+    - 请求格式：`{"Content": ["地址信息1 人名1 电话1", "地址信息2 人名2 电话2", ...]}`
+    - 返回格式：`{"Content": ["处理后的地址信息1 人名1 电话1", "处理后的地址信息2 人名2 电话2", ...]}`
+  - 只处理地址部分，保留人名和电话不变
+  - 地址补全格式：省份、城市、区县、街道、详细地址
+  - 接口会自动识别输入格式（字符串或数组），返回格式与输入格式一致
 
 详细配置示例请参考模型目录下的 `README.md` 文件。
 

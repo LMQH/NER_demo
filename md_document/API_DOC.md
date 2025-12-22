@@ -286,7 +286,7 @@ Content-Type: application/json
 ### 5. 实体抽取 - 使用MGeo地理组成分析模型
 
 **方法：** POST  
-**URL：** `http://localhost:5000/api/extract`  
+**URL：** `http://localhost:8000/api/extract`  
 **Headers：**
 ```
 Content-Type: application/json
@@ -312,7 +312,7 @@ Content-Type: application/json
 ### 6. 关系抽取示例
 
 **方法：** POST  
-**URL：** `http://localhost:5000/api/extract`  
+**URL：** `http://localhost:8000/api/extract`  
 **Headers：**
 ```
 Content-Type: application/json
@@ -338,7 +338,7 @@ Content-Type: application/json
 ### 7. 切换模型
 
 **方法：** POST  
-**URL：** `http://localhost:5000/api/model/switch`  
+**URL：** `http://localhost:8000/api/model/switch`  
 **Headers：**
 ```
 Content-Type: application/json
@@ -356,7 +356,7 @@ Content-Type: application/json
 ### 8. 切换模型 - MGeo地理组成分析
 
 **方法：** POST  
-**URL：** `http://localhost:5000/api/model/switch`  
+**URL：** `http://localhost:8000/api/model/switch`  
 **Headers：**
 ```
 Content-Type: application/json
@@ -371,8 +371,10 @@ Content-Type: application/json
 
 ---
 
+### 9. 文本预处理 - 地址纠错和补全
+
 **方法：** POST  
-**URL：** `http://localhost:5000/api/model/switch`  
+**URL：** `http://localhost:8000/api/preprocess`  
 **Headers：**
 ```
 Content-Type: application/json
@@ -381,9 +383,82 @@ Content-Type: application/json
 **Body（raw JSON）：**
 ```json
 {
-  "model": "chinese-macbert-base"
+  "Content": "广东省深圳市龙岗区坂田街道长坑路西2巷2号202 黄大大 18273778575"
 }
 ```
+
+**说明：** 
+- 对地址信息进行错字纠错和补全
+- 保留人名和电话不变
+- 返回格式与请求格式一致：`{"Content": "处理后的文本"}`
+
+---
+
+### 9. 文本预处理接口
+
+**接口地址：** `POST /api/preprocess`
+
+**说明：** 对输入文本进行错字纠错和地址信息补全
+
+**请求头：**
+```
+Content-Type: application/json
+```
+
+**请求体（JSON）：**
+```json
+{
+  "Content": "广东省深圳市龙岗区坂田街道长坑路西2巷2号202 黄大大 18273778575"
+}
+```
+
+**请求参数说明：**
+- `Content` (必需): 待预处理的文本，格式：地址信息 人名 电话
+  - 示例：`"广东省深圳市龙岗区坂田街道长坑路西2巷2号202 黄大大 18273778575"`
+  - 接口会自动识别地址、人名和电话部分
+  - 只对地址部分进行纠错和补全，人名和电话保持不变
+
+**功能说明：**
+1. **错字纠错**：使用qwen-flash大模型纠正地址文本中的错别字
+2. **地址补全**：提取并补全地址信息，返回标准格式：
+   - ProvinceName: 省份
+   - CityName: 城市
+   - ExpAreaName: 所在地区/县级市
+   - StreetName: 街道名称
+   - Address: 详细地址
+3. **保留人名和电话**：不处理人名和电话，保持原样
+
+**请求示例（curl）：**
+```bash
+curl -X POST http://localhost:8000/api/preprocess \
+  -H "Content-Type: application/json" \
+  -d '{
+    "Content": "广东省深圳市龙岗区坂田街道长坑路西2巷2号202 黄大大 18273778575"
+  }'
+```
+
+**响应示例（成功）：**
+```json
+{
+  "Content": "广东省深圳市龙岗区坂田街道长坑路西2巷2号202 黄大大 18273778575"
+}
+```
+
+**说明：**
+- 返回格式与请求格式一致：`{"Content": "处理后的文本"}`
+- 处理后的文本格式：`处理后的地址信息 人名 电话`
+- 如果地址有错字，会被纠正；如果地址信息不完整，会被补全
+
+**HTTP状态码：**
+- `200`: 成功
+- `400`: 请求参数错误（Content字段为空）
+- `503`: 服务不可用（未配置DASHSCOPE_API_KEY）
+
+**注意事项：**
+1. 需要配置 `DASHSCOPE_API_KEY` 环境变量才能使用此功能
+2. 获取API Key：https://dashscope.console.aliyun.com/apiKey
+3. 接口使用qwen-flash模型进行文本处理
+4. 只处理地址信息，人名和电话不会被修改
 
 ---
 
@@ -472,12 +547,18 @@ API使用标准的HTTP状态码和JSON错误响应：
 请求参数错误，例如：
 - `text`字段为空
 - `schema`字段为空
+- `Content`字段为空（预处理接口）
 - 不支持的模型名称
+
+### 503 Service Unavailable
+服务不可用，例如：
+- 文本预处理功能未配置DASHSCOPE_API_KEY
 
 ### 500 Internal Server Error
 服务器内部错误，例如：
 - 模型加载失败
 - 实体抽取过程出错
+- 文本预处理过程出错
 
 错误响应格式：
 ```json
@@ -500,6 +581,8 @@ API使用标准的HTTP状态码和JSON错误响应：
 4. **模型路径**：确保模型文件已正确下载到 `model/` 目录下。
 
 5. **文本长度**：建议单次处理的文本长度不超过模型的最大输入长度限制。
+
+6. **文本预处理功能**：需要配置 `DASHSCOPE_API_KEY` 才能使用，获取方式：https://dashscope.console.aliyun.com/apiKey
 
 ---
 

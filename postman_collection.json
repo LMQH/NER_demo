@@ -330,6 +330,30 @@
         },
         "description": "批量上传多个文件到data目录，保留原文件名，默认覆盖已存在的文件。\n\n注意：在Postman中需要切换到Body标签，选择form-data模式，然后：\n1. 在Key列输入'files'，类型选择'File'\n2. 点击'Select Files'选择多个要上传的文件\n3. （可选）添加'overwrite'字段，值为'true'（默认）或'false'"
       }
+    },
+    {
+      "name": "文本预处理 - 地址纠错和补全",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"Content\": \"广东省深圳市龙岗区坂田街道长坑路西2巷2号202 黄大大 18273778575\"\n}"
+        },
+        "url": {
+          "raw": "http://localhost:8000/api/preprocess",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "8000",
+          "path": ["api", "preprocess"]
+        },
+        "description": "文本预处理接口：对地址信息进行错字纠错和补全，保留人名和电话不变。\n\n功能：\n1. 错字纠错：纠正地址文本中的错别字\n2. 地址补全：提取并补全地址信息（省份、城市、区县、街道、详细地址）\n3. 保留人名和电话：不处理人名和电话，保持原样\n\n请求格式：{\"Content\": \"地址信息 人名 电话\"}\n返回格式：{\"Content\": \"处理后的地址信息 人名 电话\"}"
+      }
     }
   ]
 }
