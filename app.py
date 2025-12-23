@@ -5,6 +5,8 @@ NER Demo FastAPI服务
 import sys
 import os
 import shutil
+import time
+import logging
 from pathlib import Path
 from typing import Dict, Any, Optional, List, Union
 from datetime import datetime
@@ -22,7 +24,26 @@ os.chdir(project_root)
 from src.model_manager import ModelManager
 from src.file_reader import FileReader
 from src.config_manager import ConfigManager
-from src.text_preprocessor import TextPreprocessor
+
+# 配置日志系统
+log_dir = project_root / "logs"
+log_dir.mkdir(exist_ok=True)
+
+# 创建日志文件名（按日期）
+log_file = log_dir / f"inference_{datetime.now().strftime('%Y%m%d')}.log"
+
+# 配置日志格式和处理器
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+    datefmt="%Y-%m-%d %H:%M:%S",
+    handlers=[
+        logging.FileHandler(log_file, encoding='utf-8'),
+        logging.StreamHandler()  # 同时输出到控制台
+    ]
+)
+
+logger = logging.getLogger("NER_API")
 
 # 创建FastAPI应用
 app = FastAPI(
@@ -45,20 +66,8 @@ model_manager = ModelManager(base_path=str(project_root))
 file_reader = FileReader()
 config_manager = ConfigManager()
 
-# 初始化文本预处理器
 # 注意：config_manager.load_config() 会将配置加载到环境变量中
-try:
-    # 从环境变量获取API key（config_manager已经加载了配置）
-    api_key = os.getenv('DASHSCOPE_API_KEY')
-    if api_key and api_key.strip() and api_key != 'your_api_key_here':
-        text_preprocessor = TextPreprocessor(api_key=api_key)
-        print("文本预处理器初始化成功")
-    else:
-        text_preprocessor = None
-        print("警告: 未配置DASHSCOPE_API_KEY或API key无效，文本预处理功能将不可用")
-except Exception as e:
-    print(f"警告: 文本预处理器初始化失败: {str(e)}")
-    text_preprocessor = None
+# qwen-flash模型会在需要时通过ModelManager加载
 
 
 # ==================== Pydantic模型定义 ====================
@@ -79,20 +88,21 @@ class ModelsResponse(BaseModel):
 
 class ExtractRequest(BaseModel):
     """实体抽取请求"""
-    text: str = Field(..., description="待处理的文本")
+    Content: str = Field(..., description="待处理的文本，格式：地址信息 人名 电话")
     model: Optional[str] = Field(
-        default="nlp_structbert_siamese-uie_chinese-base",
+        default="qwen-flash",
         description="模型名称（可选）"
     )
-    schema: Dict[str, Any] = Field(..., description="实体抽取schema，指定要抽取的实体类型")
+    schema: Optional[Dict[str, Any]] = Field(None, description="实体抽取schema，指定要抽取的实体类型（qwen-flash模型不使用此参数）")
 
 
 class ExtractResponse(BaseModel):
     """实体抽取响应"""
-    status: str
-    data: Optional[Dict[str, Any]] = None
-    message: Optional[str] = None
-    timestamp: str
+    EBusinessID: str = Field(..., description="业务ID")
+    Data: Dict[str, Any] = Field(..., description="提取的实体数据")
+    Success: bool = Field(..., description="是否成功")
+    Reason: str = Field(..., description="原因说明")
+    ResultCode: str = Field(..., description="结果代码")
 
 
 class FileItem(BaseModel):
@@ -146,22 +156,6 @@ class MultipleUploadResponse(BaseModel):
     timestamp: str
 
 
-class PreprocessRequest(BaseModel):
-    """文本预处理请求"""
-    Content: Union[str, List[str]] = Field(
-        ..., 
-        description="待预处理的文本，格式：地址信息 人名 电话。支持单个字符串或字符串数组"
-    )
-
-
-class PreprocessResponse(BaseModel):
-    """文本预处理响应"""
-    Content: Union[str, List[str]] = Field(
-        ..., 
-        description="处理后的文本，格式：处理后的地址信息 人名 电话。返回格式与输入格式一致"
-    )
-
-
 # ==================== API路由 ====================
 
 @app.get("/api/health", response_model=HealthResponse, tags=["系统"])
@@ -193,9 +187,36 @@ async def extract_entities(request: ExtractRequest):
     """
     实体抽取接口
     
-    从文本中抽取实体，支持命名实体识别、关系抽取、事件抽取等任务。
+    从文本中抽取实体，支持多种模型和任务类型。
+    
+    请求格式：
+    {
+        "Content": "广东省深圳市龙岗区坂田街道长坑路西2巷2号202 黄大大 18273778575",
+        "model": "qwen-flash"
+    }
+    
+    响应格式（qwen-flash模型）：
+    {
+        "EBusinessID": "1279441",
+        "Data": {
+            "ProvinceName": "广东省",
+            "StreetName": "坂田街道",
+            "Address": "长坑路西2巷2号202",
+            "CityName": "深圳市",
+            "ExpAreaName": "龙岗区",
+            "Mobile": "18273778575",
+            "Name": "黄大大"
+        },
+        "Success": true,
+        "Reason": "解析成功",
+        "ResultCode": "100"
+    }
     """
     try:
+        # 验证输入
+        if not request.Content or not request.Content.strip():
+            raise HTTPException(status_code=400, detail="Content字段不能为空")
+        
         # 验证模型名称
         if request.model not in model_manager.SUPPORTED_MODELS:
             raise HTTPException(
@@ -210,34 +231,63 @@ async def extract_entities(request: ExtractRequest):
             raise HTTPException(status_code=500, detail=f"模型加载失败: {str(e)}")
         
         # 执行实体抽取
+        # 记录推理开始时间
+        inference_start_time = time.time()
         try:
-            result = model.extract_entities(request.text, request.schema)
+            # 对于qwen-flash模型，schema参数会被忽略
+            result = model.extract_entities(request.Content, request.schema)
             
-            # 检查是否有错误
-            if "error" in result:
+            # 记录推理结束时间并计算耗时
+            inference_end_time = time.time()
+            inference_duration = inference_end_time - inference_start_time
+            
+            # 记录推理时间到日志
+            logger.info(
+                f"推理时间记录 - 方法: extract_entities | "
+                f"模型: {request.model} | "
+                f"文本长度: {len(request.Content)} | "
+                f"推理耗时: {inference_duration:.4f}秒 ({inference_duration*1000:.2f}毫秒) | "
+                f"状态: 成功"
+            )
+            
+            # qwen-flash模型直接返回统一格式
+            if request.model == 'qwen-flash':
+                return result
+            else:
+                # 其他模型保持原有格式，但需要转换为统一格式
+                # 这里为了兼容，暂时返回原有格式，但建议统一使用qwen-flash格式
                 return {
-                    "status": "error",
-                    "message": result["error"],
-                    "data": {
-                        "text": result.get("text", request.text),
+                    "EBusinessID": "1279441",
+                    "Data": {
+                        "ProvinceName": "",
+                        "StreetName": "",
+                        "Address": "",
+                        "CityName": "",
+                        "ExpAreaName": "",
+                        "Mobile": "",
+                        "Name": "",
                         "entities": result.get("entities", {}),
-                        "model": request.model
+                        "text": result.get("text", request.Content)
                     },
-                    "timestamp": datetime.now().isoformat()
+                    "Success": "error" not in result,
+                    "Reason": result.get("error", "解析成功") if "error" in result else "解析成功",
+                    "ResultCode": "100" if "error" not in result else "103"
                 }
             
-            # 返回成功结果
-            return {
-                "status": "success",
-                "data": {
-                    "text": result.get("text", request.text),
-                    "entities": result.get("entities", {}),
-                    "model": request.model
-                },
-                "timestamp": datetime.now().isoformat()
-            }
-            
         except Exception as e:
+            # 记录推理结束时间并计算耗时（即使失败也记录）
+            inference_end_time = time.time()
+            inference_duration = inference_end_time - inference_start_time
+            
+            # 记录推理时间到日志（失败情况）
+            logger.error(
+                f"推理时间记录 - 方法: extract_entities | "
+                f"模型: {request.model} | "
+                f"文本长度: {len(request.Content)} | "
+                f"推理耗时: {inference_duration:.4f}秒 ({inference_duration*1000:.2f}毫秒) | "
+                f"状态: 失败 | "
+                f"错误: {str(e)}"
+            )
             raise HTTPException(status_code=500, detail=f"实体抽取失败: {str(e)}")
     
     except HTTPException:
@@ -323,8 +373,26 @@ async def batch_extract_entities(request: BatchExtractRequest):
             raise HTTPException(status_code=500, detail=f"模型加载失败: {str(e)}")
         
         # 执行批量实体抽取
+        # 记录推理开始时间
+        inference_start_time = time.time()
         try:
             results = model.extract_from_files(files_content, schema)
+            
+            # 记录推理结束时间并计算耗时
+            inference_end_time = time.time()
+            inference_duration = inference_end_time - inference_start_time
+            
+            # 记录推理时间到日志
+            total_text_length = sum(len(content) for content in files_content.values())
+            logger.info(
+                f"推理时间记录 - 方法: extract_from_files | "
+                f"模型: {request.model} | "
+                f"文件数量: {len(files_content)} | "
+                f"总文本长度: {total_text_length} | "
+                f"推理耗时: {inference_duration:.4f}秒 ({inference_duration*1000:.2f}毫秒) | "
+                f"平均每文件耗时: {inference_duration/len(files_content):.4f}秒 | "
+                f"状态: 成功"
+            )
             
             # 检查结果中是否有错误
             has_error = False
@@ -365,6 +433,21 @@ async def batch_extract_entities(request: BatchExtractRequest):
             return response_data
             
         except Exception as e:
+            # 记录推理结束时间并计算耗时（即使失败也记录）
+            inference_end_time = time.time()
+            inference_duration = inference_end_time - inference_start_time
+            
+            # 记录推理时间到日志（失败情况）
+            total_text_length = sum(len(content) for content in files_content.values())
+            logger.error(
+                f"推理时间记录 - 方法: extract_from_files | "
+                f"模型: {request.model} | "
+                f"文件数量: {len(files_content)} | "
+                f"总文本长度: {total_text_length} | "
+                f"推理耗时: {inference_duration:.4f}秒 ({inference_duration*1000:.2f}毫秒) | "
+                f"状态: 失败 | "
+                f"错误: {str(e)}"
+            )
             raise HTTPException(status_code=500, detail=f"批量实体抽取失败: {str(e)}")
     
     except HTTPException:
@@ -573,114 +656,6 @@ async def upload_multiple_files(
         raise HTTPException(status_code=500, detail=f"服务器内部错误: {str(e)}")
 
 
-@app.post("/api/preprocess", response_model=PreprocessResponse, tags=["文本预处理"])
-async def preprocess_text(request: PreprocessRequest):
-    """
-    文本预处理接口
-    
-    对输入文本进行错字纠错和地址信息补全。
-    
-    请求格式（单条）：
-    {
-        "Content": "广东省深圳市龙岗区坂田街道长坑路西2巷2号202 黄大大 18273778575"
-    }
-    
-    请求格式（多条）：
-    {
-        "Content": [
-            "广东省深圳市龙岗区坂田街道长坑路西2巷2号202 黄大大 18273778575",
-            "广东省深圳市龙岗区坂田街道长坑路西2巷2号202 黄大大 18273778575"
-        ]
-    }
-    
-    功能：
-    1. 错字纠错：纠正地址文本中的错别字
-    2. 地址补全：提取并补全地址信息（省份、城市、区县、街道、详细地址）
-    3. 保留人名和电话：不处理人名和电话，保持原样
-    
-    返回格式（单条）：
-    {
-        "Content": "处理后的地址信息 黄大大 18273778575"
-    }
-    
-    返回格式（多条）：
-    {
-        "Content": [
-            "处理后的地址信息 黄大大 18273778575",
-            "处理后的地址信息 黄大大 18273778575"
-        ]
-    }
-    """
-    try:
-        if not text_preprocessor:
-            raise HTTPException(
-                status_code=503,
-                detail="文本预处理功能不可用，请检查DASHSCOPE_API_KEY配置"
-            )
-        
-        # 判断输入是字符串还是列表
-        is_list = isinstance(request.Content, list)
-        
-        if is_list:
-            # 批量处理
-            if not request.Content:
-                raise HTTPException(status_code=400, detail="Content数组不能为空")
-            
-            # 验证数组中的每个元素
-            for i, content in enumerate(request.Content):
-                if not content or not str(content).strip():
-                    raise HTTPException(
-                        status_code=400, 
-                        detail=f"Content数组第{i+1}个元素不能为空"
-                    )
-            
-            # 批量处理所有文本
-            processed_contents = []
-            for content in request.Content:
-                result = text_preprocessor.preprocess(str(content))
-                
-                # 检查是否有错误
-                if "error" in result:
-                    # 即使有错误，也返回原格式，但使用原始文本
-                    processed_contents.append(result.get("original_text", str(content)))
-                else:
-                    # 返回处理后的Content（保持原格式：地址 人名 电话）
-                    processed_content = result.get("corrected_text", str(content))
-                    processed_contents.append(processed_content)
-            
-            return {
-                "Content": processed_contents
-            }
-        else:
-            # 单个字符串处理（保持向后兼容）
-            if not request.Content or not str(request.Content).strip():
-                raise HTTPException(status_code=400, detail="Content字段不能为空")
-            
-            # 执行预处理
-            result = text_preprocessor.preprocess(str(request.Content))
-            
-            # 检查是否有错误
-            if "error" in result:
-                # 即使有错误，也返回原格式，但使用原始文本
-                return {
-                    "Content": result.get("original_text", str(request.Content))
-                }
-            
-            # 返回处理后的Content（保持原格式：地址 人名 电话）
-            processed_content = result.get("corrected_text", str(request.Content))
-            
-            return {
-                "Content": processed_content
-            }
-        
-    except HTTPException:
-        raise
-    except Exception as e:
-        import traceback
-        traceback.print_exc()
-        raise HTTPException(status_code=500, detail=f"文本预处理失败: {str(e)}")
-
-
 if __name__ == "__main__":
     import uvicorn
     
@@ -688,7 +663,9 @@ if __name__ == "__main__":
     print("NER Demo API服务启动 (FastAPI)")
     print("=" * 60)
     print(f"支持的模型: {', '.join(model_manager.list_models())}")
-    print(f"文本预处理: {'已启用' if text_preprocessor else '未配置（需要DASHSCOPE_API_KEY）'}")
+    api_key = os.getenv('DASHSCOPE_API_KEY')
+    qwen_status = '已启用' if (api_key and api_key.strip() and api_key != 'your_api_key_here') else '未配置（需要DASHSCOPE_API_KEY）'
+    print(f"Qwen-Flash模型: {qwen_status}")
     print(f"API文档: http://localhost:8000/docs")
     print(f"API文档 (ReDoc): http://localhost:8000/redoc")
     print("=" * 60)

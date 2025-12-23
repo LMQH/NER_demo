@@ -7,6 +7,7 @@ from typing import Dict, Optional, Union
 from .siamese_uie_model import SiameseUIEModel
 from .macbert_model import MacBERTModel
 from .mgeo_geographic_composition_analysis_chinese_base_model import MGeoGeographicCompositionAnalysisModel
+from .qwen_flash_model import QwenFlashModel
 
 
 class ModelManager:
@@ -16,14 +17,16 @@ class ModelManager:
     SUPPORTED_MODELS = {
         'chinese-macbert-base': 'model/chinese-macbert-base',
         'nlp_structbert_siamese-uie_chinese-base': 'model/nlp_structbert_siamese-uie_chinese-base',
-        'mgeo_geographic_composition_analysis_chinese_base': 'model/mgeo_geographic_composition_analysis_chinese_base'
+        'mgeo_geographic_composition_analysis_chinese_base': 'model/mgeo_geographic_composition_analysis_chinese_base',
+        'qwen-flash': None  # qwen-flash不需要本地模型路径，使用API调用
     }
     
     # 模型类型映射（指定使用哪个模型类）
     MODEL_TYPES = {
         'chinese-macbert-base': 'macbert',  # 使用MacBERTModel
         'nlp_structbert_siamese-uie_chinese-base': 'siamese_uie',  # 使用SiameseUIEModel
-        'mgeo_geographic_composition_analysis_chinese_base': 'mgeo'  # 使用MGeoGeographicCompositionAnalysisModel
+        'mgeo_geographic_composition_analysis_chinese_base': 'mgeo',  # 使用MGeoGeographicCompositionAnalysisModel
+        'qwen-flash': 'qwen_flash'  # 使用QwenFlashModel
     }
     
     def __init__(self, base_path: str = None):
@@ -39,10 +42,10 @@ class ModelManager:
             # 自动检测项目根目录（假设在src目录下）
             self.base_path = Path(__file__).parent.parent
         
-        self.models: Dict[str, Union[SiameseUIEModel, MacBERTModel, MGeoGeographicCompositionAnalysisModel]] = {}
+        self.models: Dict[str, Union[SiameseUIEModel, MacBERTModel, MGeoGeographicCompositionAnalysisModel, QwenFlashModel]] = {}
         self.current_model_name: Optional[str] = None
     
-    def get_model_path(self, model_name: str) -> Path:
+    def get_model_path(self, model_name: str) -> Optional[Path]:
         """
         获取模型路径
         
@@ -50,13 +53,17 @@ class ModelManager:
             model_name: 模型名称
             
         Returns:
-            模型路径
+            模型路径（qwen-flash返回None，因为不需要本地路径）
         """
         if model_name not in self.SUPPORTED_MODELS:
             raise ValueError(
                 f"不支持的模型: {model_name}。"
                 f"支持的模型: {list(self.SUPPORTED_MODELS.keys())}"
             )
+        
+        # qwen-flash不需要本地模型路径
+        if model_name == 'qwen-flash':
+            return None
         
         model_relative_path = self.SUPPORTED_MODELS[model_name]
         model_path = self.base_path / model_relative_path
@@ -69,7 +76,7 @@ class ModelManager:
         
         return model_path
     
-    def load_model(self, model_name: str, force_reload: bool = False) -> Union[SiameseUIEModel, MacBERTModel, MGeoGeographicCompositionAnalysisModel]:
+    def load_model(self, model_name: str, force_reload: bool = False) -> Union[SiameseUIEModel, MacBERTModel, MGeoGeographicCompositionAnalysisModel, QwenFlashModel]:
         """
         加载模型（支持缓存）
         
@@ -78,7 +85,7 @@ class ModelManager:
             force_reload: 是否强制重新加载（即使已缓存）
             
         Returns:
-            SiameseUIEModel、MacBERTModel或MGeoGeographicCompositionAnalysisModel实例
+            SiameseUIEModel、MacBERTModel、MGeoGeographicCompositionAnalysisModel或QwenFlashModel实例
         """
         # 检查模型是否已加载
         if model_name in self.models and not force_reload:
@@ -88,17 +95,22 @@ class ModelManager:
         
         # 加载新模型
         print(f"正在加载模型: {model_name}")
-        model_path = self.get_model_path(model_name)
         
         try:
             # 根据模型类型选择不同的模型类
             model_type = self.MODEL_TYPES.get(model_name, 'siamese_uie')
             
-            if model_type == 'macbert':
+            if model_type == 'qwen_flash':
+                # qwen-flash不需要本地模型路径，使用API调用
+                model = QwenFlashModel()
+            elif model_type == 'macbert':
+                model_path = self.get_model_path(model_name)
                 model = MacBERTModel(str(model_path))
             elif model_type == 'mgeo':
+                model_path = self.get_model_path(model_name)
                 model = MGeoGeographicCompositionAnalysisModel(str(model_path))
             else:  # siamese_uie
+                model_path = self.get_model_path(model_name)
                 model = SiameseUIEModel(str(model_path))
             
             self.models[model_name] = model
@@ -110,7 +122,7 @@ class ModelManager:
             print(error_msg)
             raise Exception(error_msg)
     
-    def get_model(self, model_name: str = None) -> Union[SiameseUIEModel, MacBERTModel, MGeoGeographicCompositionAnalysisModel]:
+    def get_model(self, model_name: str = None) -> Union[SiameseUIEModel, MacBERTModel, MGeoGeographicCompositionAnalysisModel, QwenFlashModel]:
         """
         获取模型实例
         
@@ -118,7 +130,7 @@ class ModelManager:
             model_name: 模型名称，如果为None则返回当前模型
             
         Returns:
-            SiameseUIEModel、MacBERTModel或MGeoGeographicCompositionAnalysisModel实例
+            SiameseUIEModel、MacBERTModel、MGeoGeographicCompositionAnalysisModel或QwenFlashModel实例
         """
         if model_name is None:
             if self.current_model_name is None:
