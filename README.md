@@ -5,7 +5,8 @@
 ## 功能特性
 
 - ✅ 支持多种文件格式：TXT、MD、WORD、PDF
-- ✅ 支持多个ModelScope模型进行实体抽取：
+- ✅ 支持多个模型进行实体抽取：
+  - **Qwen-Flash模型**：通过API调用进行地址实体抽取（推荐，默认模型）
   - SiameseUIE模型：支持NER、关系抽取、事件抽取、属性情感抽取
   - MacBERT模型：支持命名实体识别
   - MGeo地理组成分析模型：支持地理实体识别和地理组成分析
@@ -15,14 +16,14 @@
   - 事件抽取
   - 属性情感抽取
   - 地理组成分析
-- ✅ **文本预处理功能**：使用qwen-flash大模型进行地址错字纠错和补全，支持单条和批量处理
+- ✅ **自动记录推理时间**：每个方法调用的推理时间自动记录到日志文件
+- ✅ **日志记录功能**：详细的日志记录，包含推理时间、模型信息、执行状态等
 - ✅ 通过JSON配置文件自定义实体类型和抽取任务
 - ✅ 环境配置管理（开发/生产环境）
 - ✅ 自动识别环境（基于域名）
 - ✅ 结果输出为JSON格式
 - ✅ 完善的错误处理和日志记录
 - ✅ **FastAPI RESTful API服务**：提供HTTP接口，支持批量处理、文件上传等功能
-- ✅ **文本预处理接口**：地址错字纠错和信息补全，保留人名和电话，支持单条和批量处理
 - ✅ **自动API文档**：Swagger UI和ReDoc交互式文档
 
 ## 项目结构
@@ -31,6 +32,8 @@
 NER_demo/
 ├── data/                  # 输入数据文件夹
 ├── output/                # 输出结果文件夹
+├── logs/                  # 日志文件夹（自动创建）
+│   └── inference_YYYYMMDD.log  # 推理时间日志文件（按日期）
 ├── model/                 # 模型文件夹
 │   ├── nlp_structbert_siamese-uie_chinese-base/
 │   ├── chinese-macbert-base/
@@ -41,7 +44,8 @@ NER_demo/
 │   ├── siamese_uie_model.py  # SiameseUIE模型调用模块
 │   ├── macbert_model.py      # MacBERT模型调用模块
 │   ├── mgeo_geographic_composition_analysis_chinese_base_model.py  # MGeo地理组成分析模型调用模块
-│   ├── text_preprocessor.py  # 文本预处理模块（地址纠错和补全）
+│   ├── qwen_flash_model.py   # Qwen-Flash模型调用模块
+│   ├── model_manager.py      # 模型管理器模块
 │   └── main.py            # 主程序入口
 ├── entity_config.json     # 实体配置文件
 ├── app.py                # FastAPI API服务主程序
@@ -111,9 +115,9 @@ ENTITY_CONFIG_PATH=entity_config.json
 # 模型是否已下载（true/false）
 MODEL_DOWNLOADED=true
 
-# DashScope API密钥（用于文本预处理功能，qwen-flash模型）
+# DashScope API密钥（用于qwen-flash模型，必需）
 # 获取方式：https://dashscope.console.aliyun.com/apiKey
-# 如果不使用文本预处理功能，可以留空
+# qwen-flash模型是默认模型，建议配置此密钥
 DASHSCOPE_API_KEY=your_api_key_here
 ```
 
@@ -339,19 +343,38 @@ python test/test_model_load.py
 
 ## 支持的模型
 
-项目目前支持以下三个模型：
+项目目前支持以下四个模型：
 
-### 1. SiameseUIE模型 (`nlp_structbert_siamese-uie_chinese-base`)
+### 1. Qwen-Flash模型 (`qwen-flash`) ⭐推荐
+
+- **用途**：地址实体抽取，通过API调用进行地址信息识别和补全
+- **特点**：
+  - 不需要本地模型文件，通过DashScope API调用
+  - 自动识别地址、人名、电话信息
+  - 返回统一格式的结构化数据
+  - 支持地址纠错和补全
+- **输入格式**：`地址信息 人名 电话`（例如：`"广东省深圳市龙岗区坂田街道长坑路西2巷2号202 黄大大 18273778575"`）
+- **输出格式**：统一的JSON格式，包含省份、城市、区县、街道、详细地址、人名、电话
+- **配置要求**：需要配置 `DASHSCOPE_API_KEY` 环境变量
+- **适用场景**：地址信息提取、快递地址解析等
+- **默认模型**：系统默认使用此模型
+
+### 2. SiameseUIE模型 (`nlp_structbert_siamese-uie_chinese-base`)
+
 - **用途**：通用信息抽取
 - **支持任务**：命名实体识别、关系抽取、事件抽取、属性情感抽取
 - **模型路径**：`model/nlp_structbert_siamese-uie_chinese-base/`
+- **适用场景**：通用文本信息抽取任务
 
-### 2. MacBERT模型 (`chinese-macbert-base`)
+### 3. MacBERT模型 (`chinese-macbert-base`)
+
 - **用途**：命名实体识别
 - **支持任务**：命名实体识别（基于规则方法）
 - **模型路径**：`model/chinese-macbert-base/`
+- **适用场景**：简单命名实体识别任务
 
-### 3. MGeo地理组成分析模型 (`mgeo_geographic_composition_analysis_chinese_base`)
+### 4. MGeo地理组成分析模型 (`mgeo_geographic_composition_analysis_chinese_base`)
+
 - **用途**：地理实体识别和地址成分分析
 - **支持任务**：地址成分分析（Address Composition Analysis）
 - **模型路径**：`model/mgeo_geographic_composition_analysis_chinese_base/`
@@ -364,15 +387,17 @@ python test/test_model_load.py
 
 ## 注意事项
 
-1. **模型文件**：确保模型已下载到对应的模型目录，包含以下必要文件：
-   - `config.json` 或 `configuration.json`
-   - `pytorch_model.bin`
-   - `vocab.txt`（如果适用）
-   
-   各模型目录：
-   - `model/nlp_structbert_siamese-uie_chinese-base/`
-   - `model/chinese-macbert-base/`
-   - `model/mgeo_geographic_composition_analysis_chinese_base/`
+1. **模型文件**：
+   - **Qwen-Flash模型**：不需要本地模型文件，通过DashScope API调用，只需配置 `DASHSCOPE_API_KEY`
+   - **其他模型**：确保模型已下载到对应的模型目录，包含以下必要文件：
+     - `config.json` 或 `configuration.json`
+     - `pytorch_model.bin`
+     - `vocab.txt`（如果适用）
+     
+     各模型目录：
+     - `model/nlp_structbert_siamese-uie_chinese-base/`
+     - `model/chinese-macbert-base/`
+     - `model/mgeo_geographic_composition_analysis_chinese_base/`
 
 2. **依赖版本**：请严格按照 `requirements.txt` 中的版本要求安装依赖，避免版本兼容性问题。
    - **注意**：MGeo模型可能需要特定版本的transformers，如果遇到兼容性问题，代码会自动尝试使用ModelScope模型ID加载（推荐方式）
@@ -388,10 +413,17 @@ python test/test_model_load.py
 
 7. **CUDA支持**：如果系统有CUDA支持，模型会自动使用GPU加速；否则使用CPU运行。
 
-8. **文本预处理功能**：需要配置 `DASHSCOPE_API_KEY` 才能使用文本预处理功能。
+8. **Qwen-Flash模型配置**：需要配置 `DASHSCOPE_API_KEY` 才能使用qwen-flash模型（默认模型）。
    - 获取API Key：https://dashscope.console.aliyun.com/apiKey
    - 在 `dev.env` 或 `.env` 文件中设置 `DASHSCOPE_API_KEY=your_api_key_here`
-   - 如果不使用文本预处理功能，可以留空
+   - qwen-flash是默认模型，建议配置此密钥
+
+9. **日志记录功能**：系统会自动记录每个方法调用的推理时间到日志文件。
+   - 日志文件位置：`logs/inference_YYYYMMDD.log`（按日期命名）
+   - 记录内容：推理方法、模型名称、文本长度、推理耗时、执行状态等
+   - 日志同时输出到文件和控制台
+   - 即使推理失败也会记录推理时间
+   - 日志文件已添加到 `.gitignore`，不会提交到版本控制
 
 ## 常见问题
 
@@ -444,11 +476,55 @@ A:
 ### Q: 如何选择使用哪个模型？
 
 A: 根据任务类型选择：
+- **地址实体抽取**（推荐）：使用 `qwen-flash`（默认模型）
+  - 适用于地址信息提取、快递地址解析等场景
+  - 输入格式：`地址信息 人名 电话`
+  - 输出统一的结构化数据（省份、城市、区县、街道、详细地址、人名、电话）
 - **通用信息抽取**（NER、关系抽取、事件抽取等）：使用 `nlp_structbert_siamese-uie_chinese-base`
 - **简单命名实体识别**：使用 `chinese-macbert-base`
 - **地址成分分析和地理实体识别**：使用 `mgeo_geographic_composition_analysis_chinese_base`
 
 在API请求中通过 `model` 参数指定模型名称。
+
+### Q: Qwen-Flash模型如何使用？需要schema参数吗？
+
+A: **Qwen-Flash模型不需要schema参数**，这是默认模型，主要用于地址实体抽取：
+
+1. **Qwen-Flash模型特点**：
+   - 通过DashScope API调用，不需要本地模型文件
+   - 自动识别地址、人名、电话信息
+   - 支持地址纠错和补全
+   - 返回统一的结构化数据格式
+
+2. **API调用示例**：
+   ```json
+   {
+     "Content": "广东省深圳市龙岗区坂田街道长坑路西2巷2号202 黄大大 18273778575",
+     "model": "qwen-flash"
+   }
+   ```
+   注意：`schema`参数会被忽略，不需要提供。
+
+3. **输出格式**：
+   ```json
+   {
+     "EBusinessID": "1279441",
+     "Data": {
+       "ProvinceName": "广东省",
+       "CityName": "深圳市",
+       "ExpAreaName": "龙岗区",
+       "StreetName": "坂田街道",
+       "Address": "长坑路西2巷2号202",
+       "Name": "黄大大",
+       "Mobile": "18273778575"
+     },
+     "Success": true,
+     "Reason": "解析成功",
+     "ResultCode": "100"
+   }
+   ```
+
+4. **配置要求**：需要配置 `DASHSCOPE_API_KEY` 环境变量
 
 ### Q: MGeo模型如何使用？需要schema参数吗？
 
@@ -556,17 +632,12 @@ A: 本项目支持以下任务类型：
   - 自动识别地址中的省份、城市、区县、街道、POI等成分
   - 适用于地址解析、地理实体识别等场景
 
-**文本预处理功能：**
-- **地址纠错和补全**：使用qwen-flash大模型对地址信息进行处理
-  - **单条处理**（向后兼容）：
-    - 请求格式：`{"Content": "地址信息 人名 电话"}`
-    - 返回格式：`{"Content": "处理后的地址信息 人名 电话"}`
-  - **批量处理**（新功能）：
-    - 请求格式：`{"Content": ["地址信息1 人名1 电话1", "地址信息2 人名2 电话2", ...]}`
-    - 返回格式：`{"Content": ["处理后的地址信息1 人名1 电话1", "处理后的地址信息2 人名2 电话2", ...]}`
-  - 只处理地址部分，保留人名和电话不变
-  - 地址补全格式：省份、城市、区县、街道、详细地址
-  - 接口会自动识别输入格式（字符串或数组），返回格式与输入格式一致
+**Qwen-Flash模型：**
+- **地址实体抽取**：使用qwen-flash大模型进行地址信息识别和补全
+  - **输入格式**：`{"Content": "地址信息 人名 电话", "model": "qwen-flash"}`
+  - **输出格式**：统一的JSON格式，包含省份、城市、区县、街道、详细地址、人名、电话
+  - 自动识别地址、人名、电话，并进行地址纠错和补全
+  - 不需要schema参数
 
 详细配置示例请参考模型目录下的 `README.md` 文件。
 

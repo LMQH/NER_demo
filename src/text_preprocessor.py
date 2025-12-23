@@ -5,8 +5,13 @@
 import os
 import json
 import re
+import logging
 from typing import Dict, Any, Optional
 from dashscope import Generation
+from .constants import ADDRESS_KEYWORDS, PHONE_PATTERN, FIXED_PHONE_PATTERN, CHINESE_NAME_PATTERN
+from .utils.exceptions import NERDemoException
+
+logger = logging.getLogger(__name__)
 
 
 class TextPreprocessor:
@@ -21,7 +26,7 @@ class TextPreprocessor:
         """
         self.api_key = api_key or os.getenv('DASHSCOPE_API_KEY')
         if not self.api_key:
-            raise ValueError("未找到DASHSCOPE_API_KEY，请在环境配置文件中设置")
+            raise NERDemoException("未找到DASHSCOPE_API_KEY，请在环境配置文件中设置")
         
         # 设置API密钥
         os.environ['DASHSCOPE_API_KEY'] = self.api_key
@@ -93,9 +98,7 @@ class TextPreprocessor:
             
         except Exception as e:
             error_msg = f"预处理失败: {str(e)}"
-            print(f"错误详情: {error_msg}")
-            import traceback
-            traceback.print_exc()
+            logger.error(f"预处理错误: {error_msg}", exc_info=True)
             return {
                 "original_text": text,
                 "corrected_text": text,
@@ -123,8 +126,7 @@ class TextPreprocessor:
         original_text = text
         
         # 步骤1: 提取电话号码（11位手机号）
-        phone_pattern = r'1[3-9]\d{9}'
-        phone_match = re.search(phone_pattern, text)
+        phone_match = re.search(PHONE_PATTERN, text)
         if phone_match:
             result["phone"] = phone_match.group(0)
             phone_start = phone_match.start()
@@ -134,8 +136,7 @@ class TextPreprocessor:
             text_after_phone = text[phone_end:]
         else:
             # 尝试提取固定电话（带区号）
-            fixed_phone_pattern = r'0\d{2,3}-?\d{7,8}'
-            fixed_phone_match = re.search(fixed_phone_pattern, text)
+            fixed_phone_match = re.search(FIXED_PHONE_PATTERN, text)
             if fixed_phone_match:
                 result["phone"] = fixed_phone_match.group(0)
                 phone_start = fixed_phone_match.start()
@@ -160,10 +161,7 @@ class TextPreprocessor:
             result["address"] = remaining_text
             return result
         
-        # 尝试识别地址关键词
-        address_keywords = ['省', '市', '区', '县', '镇', '街道', '路', '街', '号', '村', '组', 
-                           '小区', '大厦', '广场', '园区', '工业区', '开发区', '新区', '大道', 
-                           '巷', '弄', '里', '幢', '栋', '单元', '室', '层']
+        # 尝试识别地址关键词（使用常量）
         
         # 策略：从前往后找地址部分，从后往前找人名部分
         address_parts = []
@@ -172,7 +170,7 @@ class TextPreprocessor:
         # 找到第一个包含地址关键词的部分
         address_start_idx = -1
         for i, part in enumerate(parts):
-            if any(keyword in part for keyword in address_keywords) or bool(re.search(r'\d', part)):
+            if any(keyword in part for keyword in ADDRESS_KEYWORDS) or bool(re.search(r'\d', part)):
                 address_start_idx = i
                 break
         
@@ -181,9 +179,9 @@ class TextPreprocessor:
             i = address_start_idx
             while i < len(parts):
                 part = parts[i]
-                part_has_address_keyword = any(keyword in part for keyword in address_keywords)
+                part_has_address_keyword = any(keyword in part for keyword in ADDRESS_KEYWORDS)
                 has_number = bool(re.search(r'\d', part))
-                is_person = re.match(r'^[\u4e00-\u9fa5]{2,4}$', part) and not part_has_address_keyword
+                is_person = re.match(CHINESE_NAME_PATTERN, part) and not part_has_address_keyword
                 
                 if is_person:
                     # 遇到可能是人名的部分，停止地址收集
@@ -209,7 +207,7 @@ class TextPreprocessor:
                 # 或者可能是人名
                 for i in range(address_start_idx):
                     part = parts[i]
-                    is_person = re.match(r'^[\u4e00-\u9fa5]{2,4}$', part)
+                    is_person = re.match(CHINESE_NAME_PATTERN, part)
                     if is_person:
                         person_parts.insert(0, part)
                     else:
@@ -220,7 +218,7 @@ class TextPreprocessor:
             # 如果包含数字，可能是地址
             for part in parts:
                 has_number = bool(re.search(r'\d', part))
-                is_person = re.match(r'^[\u4e00-\u9fa5]{2,4}$', part)
+                is_person = re.match(CHINESE_NAME_PATTERN, part)
                 
                 if has_number and len(part) > 2:
                     address_parts.append(part)
@@ -286,11 +284,11 @@ class TextPreprocessor:
                 corrected = response.output.text.strip()
                 return corrected
             else:
-                print(f"纠错失败: {response.message}")
+                logger.warning(f"纠错失败: {response.message}")
                 return text
                 
         except Exception as e:
-            print(f"文本纠错出错: {str(e)}")
+            logger.error(f"文本纠错出错: {str(e)}", exc_info=True)
             return text
     
     def _complete_address(self, address_text: str) -> Dict[str, Any]:
@@ -352,10 +350,10 @@ class TextPreprocessor:
                         try:
                             address_info = json.loads(json_str)
                         except json.JSONDecodeError:
-                            print(f"JSON解析失败: {json_str}")
+                            logger.warning(f"JSON解析失败: {json_str}")
                             return self._default_address_info()
                     else:
-                        print(f"未找到JSON格式: {result_text}")
+                        logger.warning(f"未找到JSON格式: {result_text}")
                         return self._default_address_info()
                 
                 # 确保所有字段都存在，并转换为字符串
@@ -369,13 +367,11 @@ class TextPreprocessor:
                 
                 return result
             else:
-                print(f"地址补全失败: {response.message}")
+                logger.warning(f"地址补全失败: {response.message}")
                 return self._default_address_info()
                 
         except Exception as e:
-            print(f"地址补全出错: {str(e)}")
-            import traceback
-            traceback.print_exc()
+            logger.error(f"地址补全出错: {str(e)}", exc_info=True)
             return self._default_address_info()
     
     def _default_address_info(self) -> Dict[str, str]:

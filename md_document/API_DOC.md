@@ -5,9 +5,17 @@
 NER Demo API 提供了基于FastAPI的RESTful接口，支持前端传入文本和模型选择进行命名实体识别（NER）任务。
 
 **支持的模型：**
+- `qwen-flash` - Qwen-Flash大模型，通过API调用进行地址实体抽取（推荐，默认模型）
 - `chinese-macbert-base` - MacBERT基础模型，支持命名实体识别
 - `nlp_structbert_siamese-uie_chinese-base` - SiameseUIE通用信息抽取模型，支持NER、关系抽取、事件抽取、属性情感抽取
 - `mgeo_geographic_composition_analysis_chinese_base` - MGeo地理组成分析模型，支持地理实体识别和地理组成分析
+
+**功能特性：**
+- ✅ 自动记录推理时间并写入日志文件
+- ✅ 支持单条和批量实体抽取
+- ✅ 支持文件上传和批量处理
+- ✅ 自动API文档（Swagger UI和ReDoc）
+- ✅ 完善的错误处理和日志记录
 
 ## 启动服务
 
@@ -16,14 +24,23 @@ NER Demo API 提供了基于FastAPI的RESTful接口，支持前端传入文本�
 python app.py
 ```
 
-### 方式2：使用Flask命令
-```bash
-flask --app app run --host=0.0.0.0 --port=5000
-```
-
 服务启动后，默认运行在：`http://localhost:8000`
 
-**注意：** 本文档中的端口号已更新为8000（FastAPI默认端口），如果您的服务运行在其他端口，请相应调整URL。
+**注意：** 本文档中的端口号为8000（FastAPI默认端口），如果您的服务运行在其他端口，请相应调整URL。
+
+## 日志记录
+
+系统会自动记录每个方法调用的推理时间到日志文件：
+
+- **日志位置**：`logs/inference_YYYYMMDD.log`（项目根目录下的logs文件夹）
+- **日志格式**：`YYYY-MM-DD HH:MM:SS - NER_API - LEVEL - 消息内容`
+- **记录内容**：推理方法、模型名称、文本长度、推理耗时、执行状态等
+- **输出位置**：同时输出到日志文件和控制台
+
+**日志示例：**
+```
+2023-12-21 15:30:45 - NER_API - INFO - 推理时间记录 - 方法: extract_entities | 模型: qwen-flash | 文本长度: 50 | 推理耗时: 1.2345秒 (1234.50毫秒) | 状态: 成功
+```
 
 ## API接口列表
 
@@ -67,9 +84,10 @@ curl http://localhost:8000/api/models
   "models": [
     "chinese-macbert-base",
     "nlp_structbert_siamese-uie_chinese-base",
-    "mgeo_geographic_composition_analysis_chinese_base"
+    "mgeo_geographic_composition_analysis_chinese_base",
+    "qwen-flash"
   ],
-  "count": 3
+  "count": 4
 }
 ```
 
@@ -79,7 +97,7 @@ curl http://localhost:8000/api/models
 
 **接口地址：** `POST /api/extract`
 
-**说明：** 对传入的文本进行实体抽取
+**说明：** 对传入的文本进行实体抽取，支持多种模型和任务类型。系统会自动记录推理时间到日志文件。
 
 **请求头：**
 ```
@@ -87,9 +105,19 @@ Content-Type: application/json
 ```
 
 **请求体（JSON）：**
+
+**qwen-flash模型请求格式：**
 ```json
 {
-  "text": "1944年毕业于北大的名古屋铁道会长谷口清太郎等人在日本积极筹资。",
+  "Content": "广东省深圳市龙岗区坂田街道长坑路西2巷2号202 黄大大 18273778575",
+  "model": "qwen-flash"
+}
+```
+
+**其他模型请求格式：**
+```json
+{
+  "Content": "1944年毕业于北大的名古屋铁道会长谷口清太郎等人在日本积极筹资。",
   "model": "nlp_structbert_siamese-uie_chinese-base",
   "schema": {
     "人物": null,
@@ -100,24 +128,39 @@ Content-Type: application/json
 ```
 
 **请求参数说明：**
-- `text` (必需): 待处理的文本内容
-- `model` (可选): 模型名称，默认为 `nlp_structbert_siamese-uie_chinese-base`
+- `Content` (必需): 待处理的文本内容
+  - **qwen-flash模型**：格式为 `地址信息 人名 电话`，例如：`"广东省深圳市龙岗区坂田街道长坑路西2巷2号202 黄大大 18273778575"`
+  - **其他模型**：任意文本内容
+- `model` (可选): 模型名称，默认为 `qwen-flash`
   - 可选值：
+    - `qwen-flash` - Qwen-Flash大模型，通过API调用进行地址实体抽取（推荐，默认）
     - `chinese-macbert-base` - MacBERT基础模型，支持命名实体识别
     - `nlp_structbert_siamese-uie_chinese-base` - SiameseUIE通用信息抽取模型，支持NER、关系抽取、事件抽取、属性情感抽取
     - `mgeo_geographic_composition_analysis_chinese_base` - MGeo地理组成分析模型，支持地理实体识别和地理组成分析
-- `schema` (必需): 实体抽取配置，定义要抽取的实体类型
+- `schema` (可选): 实体抽取配置，定义要抽取的实体类型（qwen-flash模型不使用此参数，会被忽略）
   - 命名实体识别格式：`{"实体类型": null}`
   - 关系抽取格式：`{"主语实体": {"关系(宾语实体)": null}}`
   - 事件抽取格式：`{"事件类型(触发词)": {"参数类型": null}}`
   - 地理组成分析格式：`{"地理实体": null, "地理位置": null, "地理组成": null}`
 
 **请求示例（curl）：**
+
+**qwen-flash模型：**
 ```bash
 curl -X POST http://localhost:8000/api/extract \
   -H "Content-Type: application/json" \
   -d '{
-    "text": "1944年毕业于北大的名古屋铁道会长谷口清太郎等人在日本积极筹资。",
+    "Content": "广东省深圳市龙岗区坂田街道长坑路西2巷2号202 黄大大 18273778575",
+    "model": "qwen-flash"
+  }'
+```
+
+**其他模型：**
+```bash
+curl -X POST http://localhost:8000/api/extract \
+  -H "Content-Type: application/json" \
+  -d '{
+    "Content": "1944年毕业于北大的名古屋铁道会长谷口清太郎等人在日本积极筹资。",
     "model": "nlp_structbert_siamese-uie_chinese-base",
     "schema": {
       "人物": null,
@@ -127,12 +170,37 @@ curl -X POST http://localhost:8000/api/extract \
   }'
 ```
 
-**响应示例（成功）：**
+**响应示例（qwen-flash模型 - 成功）：**
 ```json
 {
-  "status": "success",
-  "data": {
-    "text": "1944年毕业于北大的名古屋铁道会长谷口清太郎等人在日本积极筹资。",
+  "EBusinessID": "1279441",
+  "Data": {
+    "ProvinceName": "广东省",
+    "StreetName": "坂田街道",
+    "Address": "长坑路西2巷2号202",
+    "CityName": "深圳市",
+    "ExpAreaName": "龙岗区",
+    "Mobile": "18273778575",
+    "Name": "黄大大"
+  },
+  "Success": true,
+  "Reason": "解析成功",
+  "ResultCode": "100"
+}
+```
+
+**响应示例（其他模型 - 成功）：**
+```json
+{
+  "EBusinessID": "1279441",
+  "Data": {
+    "ProvinceName": "",
+    "StreetName": "",
+    "Address": "",
+    "CityName": "",
+    "ExpAreaName": "",
+    "Mobile": "",
+    "Name": "",
     "entities": {
       "output": [
         [
@@ -158,17 +226,18 @@ curl -X POST http://localhost:8000/api/extract \
         ]
       ]
     },
-    "model": "nlp_structbert_siamese-uie_chinese-base"
+    "text": "1944年毕业于北大的名古屋铁道会长谷口清太郎等人在日本积极筹资。"
   },
-  "timestamp": "2025-01-19T10:30:00.123456"
+  "Success": true,
+  "Reason": "解析成功",
+  "ResultCode": "100"
 }
 ```
 
 **响应示例（错误）：**
 ```json
 {
-  "status": "error",
-  "message": "text字段不能为空"
+  "detail": "Content字段不能为空"
 }
 ```
 
@@ -177,13 +246,22 @@ curl -X POST http://localhost:8000/api/extract \
 - `400`: 请求参数错误
 - `500`: 服务器内部错误
 
+**注意事项：**
+1. qwen-flash模型不需要schema参数，会自动识别地址、人名、电话
+2. 系统会自动记录推理时间到日志文件（`logs/inference_YYYYMMDD.log`）
+3. qwen-flash模型需要配置 `DASHSCOPE_API_KEY` 环境变量
+
 ---
 
-### 4. 切换模型（预加载）
+### 4. 批量实体抽取
 
-**接口地址：** `POST /api/model/switch`
+**接口地址：** `POST /api/batch/extract`
 
-**说明：** 预加载指定模型（可选，模型会在首次使用时自动加载）
+**说明：** 批量处理多个文件的实体抽取。支持两种方式：
+1. 使用files字段：直接提供文件内容列表
+2. 使用file_names字段：从data目录读取文件
+
+系统会自动记录批量推理时间到日志文件。
 
 **请求头：**
 ```
@@ -191,274 +269,247 @@ Content-Type: application/json
 ```
 
 **请求体（JSON）：**
+
+**方式1：直接提供文件内容**
 ```json
 {
-  "model": "chinese-macbert-base"
-}
-```
-
-**请求示例（curl）：**
-```bash
-curl -X POST http://localhost:8000/api/model/switch \
-  -H "Content-Type: application/json" \
-  -d '{
-    "model": "chinese-macbert-base"
-  }'
-```
-
-**响应示例：**
-```json
-{
-  "status": "success",
-  "message": "模型切换成功: chinese-macbert-base",
-  "model": "chinese-macbert-base"
-}
-```
-
----
-
-## Postman测试示例
-
-### 1. 健康检查
-
-**方法：** GET  
-**URL：** `http://localhost:8000/api/health`  
-**Headers：** 无需特殊请求头
-
----
-
-### 2. 获取模型列表
-
-**方法：** GET  
-**URL：** `http://localhost:8000/api/models`  
-**Headers：** 无需特殊请求头
-
----
-
-### 3. 实体抽取 - 使用默认模型
-
-**方法：** POST  
-**URL：** `http://localhost:8000/api/extract`  
-**Headers：**
-```
-Content-Type: application/json
-```
-
-**Body（raw JSON）：**
-```json
-{
-  "text": "在北京冬奥会自由式滑雪中，中国选手谷爱凌获得金牌。",
-  "schema": {
-    "人物": null,
-    "地理位置": null,
-    "事件": null
-  }
-}
-```
-
----
-
-### 4. 实体抽取 - 指定模型
-
-**方法：** POST  
-**URL：** `http://localhost:8000/api/extract`  
-**Headers：**
-```
-Content-Type: application/json
-```
-
-**Body（raw JSON）：**
-```json
-{
-  "text": "1944年毕业于北大的名古屋铁道会长谷口清太郎等人在日本积极筹资。",
-  "model": "nlp_structbert_siamese-uie_chinese-base",
-  "schema": {
-    "人物": null,
-    "地理位置": null,
-    "组织机构": null,
-    "时间": null
-  }
-}
-```
-
----
-
-### 5. 实体抽取 - 使用MGeo地理组成分析模型
-
-**方法：** POST  
-**URL：** `http://localhost:8000/api/extract`  
-**Headers：**
-```
-Content-Type: application/json
-```
-
-**Body（raw JSON）：**
-```json
-{
-  "text": "北京市位于华北平原，是中华人民共和国的首都。中国由34个省级行政区组成，包括23个省、5个自治区、4个直辖市和2个特别行政区。",
-  "model": "mgeo_geographic_composition_analysis_chinese_base",
-  "schema": {
-    "地理实体": null,
-    "地理位置": null,
-    "地理组成": null
-  }
-}
-```
-
-**说明：** MGeo模型专门用于地理实体识别和地理组成分析任务，适合处理包含地理信息的文本。
-
----
-
-### 6. 关系抽取示例
-
-**方法：** POST  
-**URL：** `http://localhost:8000/api/extract`  
-**Headers：**
-```
-Content-Type: application/json
-```
-
-**Body（raw JSON）：**
-```json
-{
-  "text": "在北京冬奥会自由式滑雪中，中国选手谷爱凌获得金牌。",
-  "model": "nlp_structbert_siamese-uie_chinese-base",
-  "schema": {
-    "人物": {
-      "比赛项目(赛事名称)": null,
-      "参赛地点(城市)": null,
-      "获奖时间(时间)": null
+  "files": [
+    {
+      "filename": "example1.txt",
+      "content": "1944年毕业于北大的名古屋铁道会长谷口清太郎等人在日本积极筹资。"
+    },
+    {
+      "filename": "example2.txt",
+      "content": "在北京冬奥会自由式滑雪中，中国选手谷爱凌获得金牌。"
     }
+  ],
+  "model": "nlp_structbert_siamese-uie_chinese-base",
+  "schema": {
+    "人物": null,
+    "地理位置": null,
+    "组织机构": null
   }
 }
 ```
 
----
-
-### 7. 切换模型
-
-**方法：** POST  
-**URL：** `http://localhost:8000/api/model/switch`  
-**Headers：**
-```
-Content-Type: application/json
-```
-
-**Body（raw JSON）：**
+**方式2：从data目录读取文件**
 ```json
 {
-  "model": "chinese-macbert-base"
-}
-```
-
----
-
-### 8. 切换模型 - MGeo地理组成分析
-
-**方法：** POST  
-**URL：** `http://localhost:8000/api/model/switch`  
-**Headers：**
-```
-Content-Type: application/json
-```
-
-**Body（raw JSON）：**
-```json
-{
-  "model": "mgeo_geographic_composition_analysis_chinese_base"
-}
-```
-
----
-
-### 9. 文本预处理 - 地址纠错和补全
-
-**方法：** POST  
-**URL：** `http://localhost:8000/api/preprocess`  
-**Headers：**
-```
-Content-Type: application/json
-```
-
-**Body（raw JSON）：**
-```json
-{
-  "Content": "广东省深圳市龙岗区坂田街道长坑路西2巷2号202 黄大大 18273778575"
-}
-```
-
-**说明：** 
-- 对地址信息进行错字纠错和补全
-- 保留人名和电话不变
-- 返回格式与请求格式一致：`{"Content": "处理后的文本"}`
-
----
-
-### 9. 文本预处理接口
-
-**接口地址：** `POST /api/preprocess`
-
-**说明：** 对输入文本进行错字纠错和地址信息补全
-
-**请求头：**
-```
-Content-Type: application/json
-```
-
-**请求体（JSON）：**
-```json
-{
-  "Content": "广东省深圳市龙岗区坂田街道长坑路西2巷2号202 黄大大 18273778575"
+  "file_names": ["example.txt"],
+  "model": "nlp_structbert_siamese-uie_chinese-base"
 }
 ```
 
 **请求参数说明：**
-- `Content` (必需): 待预处理的文本，格式：地址信息 人名 电话
-  - 示例：`"广东省深圳市龙岗区坂田街道长坑路西2巷2号202 黄大大 18273778575"`
-  - 接口会自动识别地址、人名和电话部分
-  - 只对地址部分进行纠错和补全，人名和电话保持不变
-
-**功能说明：**
-1. **错字纠错**：使用qwen-flash大模型纠正地址文本中的错别字
-2. **地址补全**：提取并补全地址信息，返回标准格式：
-   - ProvinceName: 省份
-   - CityName: 城市
-   - ExpAreaName: 所在地区/县级市
-   - StreetName: 街道名称
-   - Address: 详细地址
-3. **保留人名和电话**：不处理人名和电话，保持原样
+- `files` (可选): 文件内容列表，每个文件包含：
+  - `filename`: 文件名
+  - `content`: 文件内容
+- `file_names` (可选): 文件名列表，从data目录读取文件内容
+  - 使用此方式时，schema字段可选，默认使用entity_config.json中的配置
+- `model` (可选): 模型名称，默认为 `nlp_structbert_siamese-uie_chinese-base`
+- `schema` (可选): 实体抽取schema，默认使用entity_config.json中的配置
 
 **请求示例（curl）：**
 ```bash
-curl -X POST http://localhost:8000/api/preprocess \
+curl -X POST http://localhost:8000/api/batch/extract \
   -H "Content-Type: application/json" \
   -d '{
-    "Content": "广东省深圳市龙岗区坂田街道长坑路西2巷2号202 黄大大 18273778575"
+    "files": [
+      {
+        "filename": "example1.txt",
+        "content": "1944年毕业于北大的名古屋铁道会长谷口清太郎等人在日本积极筹资。"
+      }
+    ],
+    "model": "nlp_structbert_siamese-uie_chinese-base",
+    "schema": {
+      "人物": null,
+      "地理位置": null,
+      "组织机构": null
+    }
   }'
 ```
 
 **响应示例（成功）：**
 ```json
 {
-  "Content": "广东省深圳市龙岗区坂田街道长坑路西2巷2号202 黄大大 18273778575"
+  "status": "success",
+  "data": {
+    "files_count": 2,
+    "results": {
+      "example1.txt": {
+        "text": "1944年毕业于北大的名古屋铁道会长谷口清太郎等人在日本积极筹资。",
+        "entities": {
+          "output": [
+            [
+              {
+                "type": "人物",
+                "span": "谷口清太郎",
+                "offset": [18, 23]
+              }
+            ]
+          ]
+        }
+      },
+      "example2.txt": {
+        "text": "在北京冬奥会自由式滑雪中，中国选手谷爱凌获得金牌。",
+        "entities": {
+          "output": [...]
+        }
+      }
+    },
+    "model": "nlp_structbert_siamese-uie_chinese-base",
+    "schema": {
+      "人物": null,
+      "地理位置": null,
+      "组织机构": null
+    }
+  },
+  "timestamp": "2025-01-19T10:30:00.123456"
 }
 ```
 
-**说明：**
-- 返回格式与请求格式一致：`{"Content": "处理后的文本"}`
-- 处理后的文本格式：`处理后的地址信息 人名 电话`
-- 如果地址有错字，会被纠正；如果地址信息不完整，会被补全
+**响应示例（包含警告）：**
+```json
+{
+  "status": "success",
+  "data": {
+    "files_count": 2,
+    "results": {...}
+  },
+  "warnings": {
+    "read_errors": [
+      {
+        "filename": "missing.txt",
+        "error": "文件不存在"
+      }
+    ],
+    "message": "1 个文件读取失败"
+  },
+  "timestamp": "2025-01-19T10:30:00.123456"
+}
+```
 
 **HTTP状态码：**
 - `200`: 成功
-- `400`: 请求参数错误（Content字段为空）
-- `503`: 服务不可用（未配置DASHSCOPE_API_KEY）
+- `400`: 请求参数错误
+- `500`: 服务器内部错误
 
 **注意事项：**
-1. 需要配置 `DASHSCOPE_API_KEY` 环境变量才能使用此功能
-2. 获取API Key：https://dashscope.console.aliyun.com/apiKey
-3. 接口使用qwen-flash模型进行文本处理
-4. 只处理地址信息，人名和电话不会被修改
+1. files和file_names不能同时为空
+2. 系统会自动记录批量推理时间（总耗时和平均每文件耗时）到日志文件
+3. 如果部分文件处理失败，会在warnings字段中说明
+
+---
+
+### 5. 文件上传（单个文件）
+
+**接口地址：** `POST /api/upload`
+
+**说明：** 上传单个文件到data目录
+
+**请求头：**
+```
+Content-Type: multipart/form-data
+```
+
+**请求参数（Form Data）：**
+- `file` (必需): 要上传的文件
+- `overwrite` (可选): 如果文件已存在是否覆盖，默认为 `true`
+
+**支持的文件格式：**
+- `.txt` - 纯文本文件
+- `.md` - Markdown文件
+- `.docx` / `.doc` - Word文档
+- `.pdf` - PDF文档
+
+**请求示例（curl）：**
+```bash
+curl -X POST http://localhost:8000/api/upload \
+  -F "file=@example.txt" \
+  -F "overwrite=true"
+```
+
+**响应示例：**
+```json
+{
+  "status": "success",
+  "data": {
+    "filename": "example.txt",
+    "original_filename": "example.txt",
+    "file_path": "data/example.txt",
+    "file_size": 1024,
+    "overwritten": false
+  },
+  "timestamp": "2025-01-19T10:30:00.123456"
+}
+```
+
+**HTTP状态码：**
+- `200`: 成功
+- `400`: 请求参数错误（文件名为空、不支持的文件格式、文件已存在且overwrite=false）
+- `500`: 服务器内部错误（文件保存失败）
+
+---
+
+### 6. 文件上传（多个文件）
+
+**接口地址：** `POST /api/upload/multiple`
+
+**说明：** 批量上传多个文件到data目录
+
+**请求头：**
+```
+Content-Type: multipart/form-data
+```
+
+**请求参数（Form Data）：**
+- `files` (必需): 要上传的文件列表（可上传多个）
+- `overwrite` (可选): 如果文件已存在是否覆盖，默认为 `true`
+
+**支持的文件格式：** 同单文件上传接口
+
+**请求示例（curl）：**
+```bash
+curl -X POST http://localhost:8000/api/upload/multiple \
+  -F "files=@example1.txt" \
+  -F "files=@example2.txt" \
+  -F "overwrite=true"
+```
+
+**响应示例：**
+```json
+{
+  "status": "success",
+  "data": {
+    "success_count": 2,
+    "failed_count": 0,
+    "files": [
+      {
+        "filename": "example1.txt",
+        "original_filename": "example1.txt",
+        "file_path": "data/example1.txt",
+        "file_size": 1024,
+        "overwritten": false,
+        "status": "success"
+      },
+      {
+        "filename": "example2.txt",
+        "original_filename": "example2.txt",
+        "file_path": "data/example2.txt",
+        "file_size": 2048,
+        "overwritten": false,
+        "status": "success"
+      }
+    ]
+  },
+  "timestamp": "2025-01-19T10:30:00.123456"
+}
+```
+
+**HTTP状态码：**
+- `200`: 成功（可能部分文件失败，查看响应中的failed_count和files数组中的status字段）
+- `400`: 请求参数错误（文件列表为空）
+- `500`: 服务器内部错误
 
 ---
 
@@ -522,7 +573,7 @@ curl -X POST http://localhost:8000/api/preprocess \
 
 ### 地理组成分析（MGeo模型）
 
-抽取地理实体和地理组成信息：
+**重要：** MGeo模型使用token-classification任务，**不需要schema配置**。在API调用时，schema参数可以为空或任意值，模型会忽略此参数。
 
 ```json
 {
@@ -539,34 +590,125 @@ curl -X POST http://localhost:8000/api/preprocess \
 
 ---
 
+## 模型说明
+
+### 1. Qwen-Flash模型 (`qwen-flash`)
+
+- **用途**：地址实体抽取，通过API调用进行地址信息识别和补全
+- **特点**：
+  - 不需要本地模型文件，通过DashScope API调用
+  - 自动识别地址、人名、电话信息
+  - 返回统一格式的结构化数据
+  - 支持地址纠错和补全
+- **输入格式**：`地址信息 人名 电话`（例如：`"广东省深圳市龙岗区坂田街道长坑路西2巷2号202 黄大大 18273778575"`）
+- **输出格式**：统一的JSON格式，包含省份、城市、区县、街道、详细地址、人名、电话
+- **配置要求**：需要配置 `DASHSCOPE_API_KEY` 环境变量
+- **适用场景**：地址信息提取、快递地址解析等
+
+### 2. SiameseUIE模型 (`nlp_structbert_siamese-uie_chinese-base`)
+
+- **用途**：通用信息抽取
+- **支持任务**：命名实体识别、关系抽取、事件抽取、属性情感抽取
+- **模型路径**：`model/nlp_structbert_siamese-uie_chinese-base/`
+- **适用场景**：通用文本信息抽取任务
+
+### 3. MacBERT模型 (`chinese-macbert-base`)
+
+- **用途**：命名实体识别
+- **支持任务**：命名实体识别（基于规则方法）
+- **模型路径**：`model/chinese-macbert-base/`
+- **适用场景**：简单命名实体识别任务
+
+### 4. MGeo地理组成分析模型 (`mgeo_geographic_composition_analysis_chinese_base`)
+
+- **用途**：地理实体识别和地址成分分析
+- **支持任务**：地址成分分析（Address Composition Analysis）
+- **模型路径**：`model/mgeo_geographic_composition_analysis_chinese_base/`
+- **适用场景**：处理地址query、行政区划、地理位置描述等文本
+- **特殊说明**：
+  - MGeo模型使用token-classification任务，**不需要schema参数**
+  - 直接输入地址文本即可，模型会自动识别地址中的各个成分
+  - 支持识别省份、城市、区县、街道、POI、品牌等多种地理实体类型
+
+---
+
 ## 错误处理
 
 API使用标准的HTTP状态码和JSON错误响应：
 
 ### 400 Bad Request
 请求参数错误，例如：
-- `text`字段为空
-- `schema`字段为空
-- `Content`字段为空（预处理接口）
+- `Content`字段为空
+- `schema`字段为空（对于需要schema的模型）
 - 不支持的模型名称
-
-### 503 Service Unavailable
-服务不可用，例如：
-- 文本预处理功能未配置DASHSCOPE_API_KEY
+- 文件名为空
+- 不支持的文件格式
 
 ### 500 Internal Server Error
 服务器内部错误，例如：
 - 模型加载失败
 - 实体抽取过程出错
-- 文本预处理过程出错
+- 文件保存失败
 
 错误响应格式：
 ```json
 {
-  "status": "error",
-  "message": "错误描述信息"
+  "detail": "错误描述信息"
 }
 ```
+
+---
+
+## 日志记录功能
+
+系统会自动记录每个方法调用的推理时间到日志文件：
+
+### 日志文件位置
+- **目录**：`logs/`（项目根目录下）
+- **文件名格式**：`inference_YYYYMMDD.log`（按日期命名）
+- **示例**：`inference_20231221.log`
+
+### 日志格式
+```
+YYYY-MM-DD HH:MM:SS - NER_API - LEVEL - 消息内容
+```
+
+### 记录内容
+
+#### extract_entities方法（单文本抽取）
+
+**成功记录（INFO级别）：**
+```
+推理时间记录 - 方法: extract_entities | 模型: qwen-flash | 文本长度: 50 | 推理耗时: 1.2345秒 (1234.50毫秒) | 状态: 成功
+```
+
+**失败记录（ERROR级别）：**
+```
+推理时间记录 - 方法: extract_entities | 模型: qwen-flash | 文本长度: 50 | 推理耗时: 0.5000秒 (500.00毫秒) | 状态: 失败 | 错误: xxx
+```
+
+#### extract_from_files方法（批量文件抽取）
+
+**成功记录（INFO级别）：**
+```
+推理时间记录 - 方法: extract_from_files | 模型: nlp_structbert_siamese-uie_chinese-base | 文件数量: 5 | 总文本长度: 1000 | 推理耗时: 10.2345秒 (10234.50毫秒) | 平均每文件耗时: 2.0469秒 | 状态: 成功
+```
+
+**失败记录（ERROR级别）：**
+```
+推理时间记录 - 方法: extract_from_files | 模型: nlp_structbert_siamese-uie_chinese-base | 文件数量: 5 | 总文本长度: 1000 | 推理耗时: 5.5000秒 (5500.00毫秒) | 状态: 失败 | 错误: xxx
+```
+
+### 日志输出
+- **文件输出**：写入日志文件（`logs/inference_YYYYMMDD.log`）
+- **控制台输出**：同时输出到控制台
+- **编码**：UTF-8
+
+### 注意事项
+1. 日志文件按日期自动创建，每天一个文件
+2. 即使推理失败也会记录推理时间
+3. 日志文件不会自动清理，需要手动管理
+4. 日志文件已添加到 `.gitignore`，不会提交到版本控制
 
 ---
 
@@ -578,11 +720,15 @@ API使用标准的HTTP状态码和JSON错误响应：
 
 3. **并发处理**：当前版本为单线程处理，如需支持高并发，建议使用生产级WSGI服务器（如gunicorn）。
 
-4. **模型路径**：确保模型文件已正确下载到 `model/` 目录下。
+4. **模型路径**：确保模型文件已正确下载到对应的模型目录（qwen-flash除外，它使用API调用）。
 
 5. **文本长度**：建议单次处理的文本长度不超过模型的最大输入长度限制。
 
-6. **文本预处理功能**：需要配置 `DASHSCOPE_API_KEY` 才能使用，获取方式：https://dashscope.console.aliyun.com/apiKey
+6. **qwen-flash模型配置**：需要配置 `DASHSCOPE_API_KEY` 环境变量才能使用qwen-flash模型。
+   - 获取API Key：https://dashscope.console.aliyun.com/apiKey
+   - 在环境配置文件中设置 `DASHSCOPE_API_KEY=your_api_key_here`
+
+7. **日志记录**：系统会自动记录推理时间到日志文件，无需额外配置。
 
 ---
 
@@ -619,11 +765,22 @@ import requests
 # API基础URL
 BASE_URL = "http://localhost:8000"
 
-# 实体抽取
+# 实体抽取 - qwen-flash模型
 response = requests.post(
     f"{BASE_URL}/api/extract",
     json={
-        "text": "1944年毕业于北大的名古屋铁道会长谷口清太郎等人在日本积极筹资。",
+        "Content": "广东省深圳市龙岗区坂田街道长坑路西2巷2号202 黄大大 18273778575",
+        "model": "qwen-flash"
+    }
+)
+result = response.json()
+print(result)
+
+# 实体抽取 - 其他模型
+response = requests.post(
+    f"{BASE_URL}/api/extract",
+    json={
+        "Content": "1944年毕业于北大的名古屋铁道会长谷口清太郎等人在日本积极筹资。",
         "model": "nlp_structbert_siamese-uie_chinese-base",
         "schema": {
             "人物": None,
@@ -632,7 +789,6 @@ response = requests.post(
         }
     }
 )
-
 result = response.json()
 print(result)
 ```
@@ -640,14 +796,29 @@ print(result)
 ### JavaScript示例
 
 ```javascript
-// 使用fetch API
+// 使用fetch API - qwen-flash模型
 fetch('http://localhost:8000/api/extract', {
   method: 'POST',
   headers: {
     'Content-Type': 'application/json',
   },
   body: JSON.stringify({
-    text: '1944年毕业于北大的名古屋铁道会长谷口清太郎等人在日本积极筹资。',
+    Content: '广东省深圳市龙岗区坂田街道长坑路西2巷2号202 黄大大 18273778575',
+    model: 'qwen-flash'
+  })
+})
+.then(response => response.json())
+.then(data => console.log(data))
+.catch(error => console.error('Error:', error));
+
+// 使用fetch API - 其他模型
+fetch('http://localhost:8000/api/extract', {
+  method: 'POST',
+  headers: {
+    'Content-Type': 'application/json',
+  },
+  body: JSON.stringify({
+    Content: '1944年毕业于北大的名古屋铁道会长谷口清太郎等人在日本积极筹资。',
     model: 'nlp_structbert_siamese-uie_chinese-base',
     schema: {
       '人物': null,
@@ -661,3 +832,13 @@ fetch('http://localhost:8000/api/extract', {
 .catch(error => console.error('Error:', error));
 ```
 
+---
+
+## API文档访问
+
+FastAPI 自动生成了交互式API文档：
+
+- **Swagger UI**: http://localhost:8000/docs
+- **ReDoc**: http://localhost:8000/redoc
+
+建议使用这些交互式文档来测试API接口。

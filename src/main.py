@@ -53,48 +53,40 @@ class NERDemo:
         except Exception as e:
             raise Exception(f"实体配置加载失败: {str(e)}")
     
-    def process_files(self) -> Dict[str, Any]:
+    def process_files(self, files_content: Dict[str, str]) -> Dict[str, Any]:
         """
-        处理数据目录下的所有文件
+        处理文件内容字典
+        
+        Args:
+            files_content: 文件内容字典，key为文件名，value为文件内容
         
         Returns:
             处理结果字典
         """
-        data_dir = self.config_manager.get_data_dir()
-        print(f"\n开始处理数据目录: {data_dir}")
-        
-        # 读取所有文件
-        files_content = self.file_reader.read_all_files_in_dir(data_dir)
-        
         if not files_content:
-            print("数据目录下没有找到支持的文件")
+            print("没有文件需要处理")
             return {}
         
-        print(f"找到 {len(files_content)} 个文件")
+        print(f"开始处理 {len(files_content)} 个文件")
         
         # 进行实体抽取
         results = self.ner_model.extract_from_files(files_content, self.entity_schema)
         
         return results
     
-    def save_results(self, results: Dict[str, Any]) -> str:
+    def save_results(self, results: Dict[str, Any], output_path: str = None) -> str:
         """
-        保存结果到输出目录
+        保存结果到指定路径或返回JSON字符串
         
         Args:
             results: 处理结果字典
+            output_path: 输出文件路径，如果为None则返回JSON字符串
             
         Returns:
-            输出文件路径
+            输出文件路径或JSON字符串
         """
-        output_dir = Path(self.config_manager.get_output_dir())
-        output_dir.mkdir(exist_ok=True)
-        
-        # 生成输出文件名（带时间戳）
+        # 生成输出数据结构
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        output_file = output_dir / f"ner_results_{timestamp}.json"
-        
-        # 构建输出数据结构
         output_data = {
             "timestamp": timestamp,
             "entity_schema": self.entity_schema,
@@ -102,9 +94,16 @@ class NERDemo:
             "results": results
         }
         
-        # 保存为JSON
-        with open(output_file, 'w', encoding='utf-8') as f:
-            json.dump(output_data, f, ensure_ascii=False, indent=2)
-        
-        print(f"\n结果已保存到: {output_file}")
-        return str(output_file)
+        if output_path:
+            # 保存到文件
+            output_file = Path(output_path)
+            output_file.parent.mkdir(parents=True, exist_ok=True)
+            
+            with open(output_file, 'w', encoding='utf-8') as f:
+                json.dump(output_data, f, ensure_ascii=False, indent=2)
+            
+            print(f"\n结果已保存到: {output_file}")
+            return str(output_file)
+        else:
+            # 返回JSON字符串
+            return json.dumps(output_data, ensure_ascii=False, indent=2)

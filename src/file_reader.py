@@ -8,12 +8,13 @@ from typing import Optional
 import docx
 import PyPDF2
 from pypdf import PdfReader
+from .constants import SUPPORTED_FILE_EXTENSIONS
 
 
 class FileReader:
     """文件读取器，支持多种格式"""
     
-    SUPPORTED_EXTENSIONS = {'.txt', '.md', '.docx', '.doc', '.pdf'}
+    SUPPORTED_EXTENSIONS = SUPPORTED_FILE_EXTENSIONS
     
     @staticmethod
     def read_txt(file_path: str) -> str:

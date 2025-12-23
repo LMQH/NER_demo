@@ -8,26 +8,17 @@ from .siamese_uie_model import SiameseUIEModel
 from .macbert_model import MacBERTModel
 from .mgeo_geographic_composition_analysis_chinese_base_model import MGeoGeographicCompositionAnalysisModel
 from .qwen_flash_model import QwenFlashModel
+from .constants import SUPPORTED_MODELS, MODEL_TYPES
 
 
 class ModelManager:
     """模型管理器，支持模型缓存和动态切换"""
     
-    # 支持的模型映射
-    SUPPORTED_MODELS = {
-        'chinese-macbert-base': 'model/chinese-macbert-base',
-        'nlp_structbert_siamese-uie_chinese-base': 'model/nlp_structbert_siamese-uie_chinese-base',
-        'mgeo_geographic_composition_analysis_chinese_base': 'model/mgeo_geographic_composition_analysis_chinese_base',
-        'qwen-flash': None  # qwen-flash不需要本地模型路径，使用API调用
-    }
+    # 支持的模型映射（从常量文件导入）
+    SUPPORTED_MODELS = SUPPORTED_MODELS
     
-    # 模型类型映射（指定使用哪个模型类）
-    MODEL_TYPES = {
-        'chinese-macbert-base': 'macbert',  # 使用MacBERTModel
-        'nlp_structbert_siamese-uie_chinese-base': 'siamese_uie',  # 使用SiameseUIEModel
-        'mgeo_geographic_composition_analysis_chinese_base': 'mgeo',  # 使用MGeoGeographicCompositionAnalysisModel
-        'qwen-flash': 'qwen_flash'  # 使用QwenFlashModel
-    }
+    # 模型类型映射（从常量文件导入）
+    MODEL_TYPES = MODEL_TYPES
     
     def __init__(self, base_path: str = None):
         """
