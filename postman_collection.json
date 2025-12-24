@@ -58,54 +58,6 @@
       }
     },
     {
-      "name": "实体抽取 - 指定nlp_structbert模型",
-      "request": {
-        "method": "POST",
-        "header": [
-          {
-            "key": "Content-Type",
-            "value": "application/json"
-          }
-        ],
-        "body": {
-          "mode": "raw",
-          "raw": "{\n  \"Content\": \"1944年毕业于北大的名古屋铁道会长谷口清太郎等人在日本积极筹资。\",\n  \"model\": \"nlp_structbert_siamese-uie_chinese-base\",\n  \"schema\": {\n    \"人物\": null,\n    \"地理位置\": null,\n    \"组织机构\": null\n  }\n}"
-        },
-        "url": {
-          "raw": "http://localhost:8000/api/extract",
-          "protocol": "http",
-          "host": ["localhost"],
-          "port": "8000",
-          "path": ["api", "extract"]
-        },
-        "description": "使用SiameseUIE模型进行命名实体识别"
-      }
-    },
-    {
-      "name": "实体抽取 - 指定chinese-macbert模型",
-      "request": {
-        "method": "POST",
-        "header": [
-          {
-            "key": "Content-Type",
-            "value": "application/json"
-          }
-        ],
-        "body": {
-          "mode": "raw",
-          "raw": "{\n  \"Content\": \"1944年毕业于北大的名古屋铁道会长谷口清太郎等人在日本积极筹资。\",\n  \"model\": \"chinese-macbert-base\",\n  \"schema\": {\n    \"人物\": null,\n    \"地理位置\": null,\n    \"组织机构\": null\n  }\n}"
-        },
-        "url": {
-          "raw": "http://localhost:8000/api/extract",
-          "protocol": "http",
-          "host": ["localhost"],
-          "port": "8000",
-          "path": ["api", "extract"]
-        },
-        "description": "使用MacBERT模型进行命名实体识别"
-      }
-    },
-    {
       "name": "实体抽取 - 指定mgeo地理组成分析模型",
       "request": {
         "method": "POST",
@@ -117,7 +69,7 @@
         ],
         "body": {
           "mode": "raw",
-          "raw": "{\n  \"Content\": \"北京市位于华北平原，是中华人民共和国的首都。中国由34个省级行政区组成，包括23个省、5个自治区、4个直辖市和2个特别行政区。\",\n  \"model\": \"mgeo_geographic_composition_analysis_chinese_base\",\n  \"schema\": {\n    \"地理实体\": null,\n    \"地理位置\": null,\n    \"地理组成\": null\n  }\n}"
+          "raw": "{\n  \"Content\": \"广东省深圳市龙岗区坂田街道长坑路西2巷2号202 黄大大 18273778575\",\n  \"model\": \"mgeo_geographic_composition_analysis_chinese_base\",\n  \"schema\": {\n    \"地理实体\": null,\n    \"地理位置\": null,\n    \"地理组成\": null\n  }\n}"
         },
         "url": {
           "raw": "http://localhost:8000/api/extract",
@@ -141,7 +93,7 @@
         ],
         "body": {
           "mode": "raw",
-          "raw": "{\n  \"Content\": \"在北京冬奥会自由式滑雪中，中国选手谷爱凌获得金牌。\",\n  \"model\": \"nlp_structbert_siamese-uie_chinese-base\",\n  \"schema\": {\n    \"人物\": {\n      \"比赛项目(赛事名称)\": null,\n      \"参赛地点(城市)\": null,\n      \"获奖时间(时间)\": null\n    }\n  }\n}"
+          "raw": "{\n  \"Content\": \"广东省深圳市龙岗区坂田街道长坑路西2巷2号202 黄大大 18273778575\",\n  \"model\": \"nlp_structbert_siamese-uie_chinese-base\",\n  \"schema\": {\n    \"人物\": {\n      \"比赛项目(赛事名称)\": null,\n      \"参赛地点(城市)\": null,\n      \"获奖时间(时间)\": null\n    }\n  }\n}"
         },
         "url": {
           "raw": "http://localhost:8000/api/extract",
@@ -165,7 +117,7 @@
         ],
         "body": {
           "mode": "raw",
-          "raw": "{\n  \"files\": [\n    {\n      \"filename\": \"example1.txt\",\n      \"content\": \"1944年毕业于北大的名古屋铁道会长谷口清太郎等人在日本积极筹资，共筹款2.7亿日元。\"\n    },\n    {\n      \"filename\": \"example2.txt\",\n      \"content\": \"在北京冬奥会自由式滑雪中，中国选手谷爱凌获得金牌。\"\n    }\n  ],\n  \"model\": \"nlp_structbert_siamese-uie_chinese-base\",\n  \"schema\": {\n    \"人物\": null,\n    \"地理位置\": null,\n    \"组织机构\": null,\n    \"时间\": null\n  }\n}"
+          "raw": "{\n  \"files\": [\n    {\n      \"filename\": \"example1.txt\",\n      \"content\": \"广东省深圳市龙岗区坂田街道长坑路西2巷2号202 黄大大 18273778575\"\n    },\n    {\n      \"filename\": \"example2.txt\",\n      \"content\": \"广东省深圳市龙岗区坂田街道长坑路西2巷2号202 黄大大 18273778575\"\n    }\n  ],\n  \"model\": \"nlp_structbert_siamese-uie_chinese-base\",\n  \"schema\": {\n    \"人物\": null,\n    \"地理位置\": null,\n    \"组织机构\": null,\n    \"时间\": null\n  }\n}"
         },
         "url": {
           "raw": "http://localhost:8000/api/batch/extract",
@@ -189,7 +141,7 @@
         ],
         "body": {
           "mode": "raw",
-          "raw": "{\n  \"files\": [\n    {\n      \"filename\": \"geographic1.txt\",\n      \"content\": \"北京市位于华北平原，是中华人民共和国的首都。\"\n    },\n    {\n      \"filename\": \"geographic2.txt\",\n      \"content\": \"中国由34个省级行政区组成，包括23个省、5个自治区、4个直辖市和2个特别行政区。\"\n    }\n  ],\n  \"model\": \"mgeo_geographic_composition_analysis_chinese_base\",\n  \"schema\": {\n    \"地理实体\": null,\n    \"地理位置\": null,\n    \"地理组成\": null\n  }\n}"
+          "raw": "{\n  \"files\": [\n    {\n      \"filename\": \"geographic1.txt\",\n      \"content\": \"广东省深圳市龙岗区坂田街道长坑路西2巷2号202 黄大大 18273778575\"\n    },\n    {\n      \"filename\": \"geographic2.txt\",\n      \"content\": \"广东省深圳市龙岗区坂田街道长坑路西2巷2号202 黄大大 18273778575\"\n    }\n  ],\n  \"model\": \"mgeo_geographic_composition_analysis_chinese_base\",\n  \"schema\": {\n    \"地理实体\": null,\n    \"地理位置\": null,\n    \"地理组成\": null\n  }\n}"
         },
         "url": {
           "raw": "http://localhost:8000/api/batch/extract",

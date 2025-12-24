@@ -6,7 +6,7 @@ import logging
 from fastapi import APIRouter, HTTPException, Depends
 from src.api.schemas import ExtractRequest, ExtractResponse, BatchExtractRequest, BatchExtractResponse
 from src.api.converters import convert_mgeo_to_qwen_flash_format, convert_ner_to_address_format
-from src.api.dependencies import get_model_manager, get_file_reader, get_config_manager
+from src.api.dependencies import get_model_manager, get_file_reader, get_config_manager, get_address_completer
 
 router = APIRouter()
 logger = logging.getLogger("NER_API")
@@ -16,7 +16,8 @@ logger = logging.getLogger("NER_API")
 async def extract_entities(
     request: ExtractRequest,
     model_manager=Depends(get_model_manager),
-    config_manager=Depends(get_config_manager)
+    config_manager=Depends(get_config_manager),
+    address_completer=Depends(get_address_completer)
 ):
     """
     实体抽取接口
@@ -86,10 +87,10 @@ async def extract_entities(
             
             # qwen-flash模型直接返回统一格式
             if request.model == 'qwen-flash':
-                return result
+                formatted_result = result
             elif request.model == 'mgeo_geographic_composition_analysis_chinese_base':
                 # mgeo模型需要转换为qwen-flash格式
-                return convert_mgeo_to_qwen_flash_format(result, request.Content)
+                formatted_result = convert_mgeo_to_qwen_flash_format(result, request.Content)
             else:
                 # macbert和siameseUIE模型需要转换为统一格式
                 # 加载output_schema配置
@@ -102,7 +103,16 @@ async def extract_entities(
                     logger.warning(f"无法加载output_schema配置: {str(e)}，将使用默认映射")
                 
                 # 转换为统一格式
-                return convert_ner_to_address_format(result, request.Content, output_schema)
+                formatted_result = convert_ner_to_address_format(result, request.Content, output_schema)
+            
+            # 进行地址补全
+            if address_completer:
+                try:
+                    formatted_result = address_completer.complete_extract_response(formatted_result)
+                except Exception as e:
+                    logger.warning(f"地址补全失败，返回原始结果: {str(e)}")
+            
+            return formatted_result
             
         except Exception as e:
             # 记录推理结束时间并计算耗时（即使失败也记录）

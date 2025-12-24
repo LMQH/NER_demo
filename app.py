@@ -10,15 +10,27 @@ from datetime import datetime
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from dotenv import load_dotenv
 
 # 添加项目根目录到Python路径
 project_root = Path(__file__).parent
 sys.path.insert(0, str(project_root))
 os.chdir(project_root)
 
+# 加载环境变量文件（优先加载 .env，如果不存在则尝试 dev.env）
+env_file = project_root / '.env'
+if not env_file.exists():
+    env_file = project_root / 'dev.env'
+if env_file.exists():
+    load_dotenv(env_file)
+    print(f"✓ 已加载环境变量文件: {env_file.name}")
+else:
+    print("⚠ 未找到 .env 或 dev.env 文件，将使用系统环境变量")
+
 from src.model_manager import ModelManager
 from src.file_reader import FileReader
 from src.config_manager import ConfigManager
+from src.db_connection import DatabaseConnection
 from src.api.dependencies import init_dependencies
 from src.api.routes import system, extract, file
 
@@ -63,8 +75,23 @@ model_manager = ModelManager(base_path=str(project_root))
 file_reader = FileReader()
 config_manager = ConfigManager()
 
-# 初始化依赖项
-init_dependencies(model_manager, file_reader, config_manager, project_root)
+# 测试MySQL数据库连接
+db_connection = None
+db_status = "未配置"
+try:
+    db_connection = DatabaseConnection()
+    if db_connection.test_connection():
+        db_status = "✓ 连接成功"
+        logger.info(f"MySQL数据库连接成功 - Host: {db_connection.host}, Database: {db_connection.database}")
+    else:
+        db_status = "✗ 连接失败"
+        logger.warning("MySQL数据库连接测试失败")
+except Exception as e:
+    db_status = f"✗ 连接失败: {str(e)}"
+    logger.error(f"MySQL数据库连接初始化失败: {str(e)}")
+
+# 初始化依赖项（传入已测试的数据库连接）
+init_dependencies(model_manager, file_reader, config_manager, project_root, db_connection)
 
 # 注册路由
 app.include_router(system.router)
@@ -77,6 +104,14 @@ if __name__ == "__main__":
     print("=" * 60)
     print("NER Demo API服务启动 (FastAPI)")
     print("=" * 60)
+    
+    # 显示MySQL数据库连接状态
+    print(f"MySQL数据库: {db_status}")
+    if db_connection:
+        print(f"  主机: {db_connection.host}:{db_connection.port}")
+        print(f"  数据库: {db_connection.database}")
+        print(f"  用户: {db_connection.user}")
+    
     print(f"支持的模型: {', '.join(model_manager.list_models())}")
     api_key = os.getenv('DASHSCOPE_API_KEY')
     qwen_status = '已启用' if (api_key and api_key.strip() and api_key != 'your_api_key_here') else '未配置（需要DASHSCOPE_API_KEY）'
