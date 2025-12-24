@@ -5,7 +5,7 @@ import time
 import logging
 from fastapi import APIRouter, HTTPException, Depends
 from src.api.schemas import ExtractRequest, ExtractResponse, BatchExtractRequest, BatchExtractResponse
-from src.api.converters import convert_mgeo_to_qwen_flash_format, convert_ner_to_address_format
+from src.api.converters import convert_mgeo_to_qwen_flash_format, convert_mgeo_tagging_to_qwen_flash_format, convert_ner_to_address_format
 from src.api.dependencies import get_model_manager, get_file_reader, get_config_manager, get_address_completer
 
 router = APIRouter()
@@ -89,8 +89,11 @@ async def extract_entities(
             if request.model == 'qwen-flash':
                 formatted_result = result
             elif request.model == 'mgeo_geographic_composition_analysis_chinese_base':
-                # mgeo模型需要转换为qwen-flash格式
+                # mgeo地理组成分析模型需要转换为qwen-flash格式
                 formatted_result = convert_mgeo_to_qwen_flash_format(result, request.Content)
+            elif request.model == 'mgeo_geographic_elements_tagging_chinese_base':
+                # mgeo地理要素标注模型需要转换为qwen-flash格式
+                formatted_result = convert_mgeo_tagging_to_qwen_flash_format(result, request.Content)
             else:
                 # macbert和siameseUIE模型需要转换为统一格式
                 # 加载output_schema配置

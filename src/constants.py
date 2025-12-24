@@ -9,6 +9,7 @@ SUPPORTED_MODELS: Dict[str, str] = {
     'chinese-macbert-base': 'model/chinese-macbert-base',
     'nlp_structbert_siamese-uie_chinese-base': 'model/nlp_structbert_siamese-uie_chinese-base',
     'mgeo_geographic_composition_analysis_chinese_base': 'model/mgeo_geographic_composition_analysis_chinese_base',
+    'mgeo_geographic_elements_tagging_chinese_base': 'model/mgeo_geographic_elements_tagging_chinese_base',
     'qwen-flash': None  # qwen-flash不需要本地模型路径，使用API调用
 }
 
@@ -16,6 +17,7 @@ MODEL_TYPES: Dict[str, str] = {
     'chinese-macbert-base': 'macbert',
     'nlp_structbert_siamese-uie_chinese-base': 'siamese_uie',
     'mgeo_geographic_composition_analysis_chinese_base': 'mgeo',
+    'mgeo_geographic_elements_tagging_chinese_base': 'mgeo_tagging',
     'qwen-flash': 'qwen_flash'
 }
 

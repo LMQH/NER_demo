@@ -14,6 +14,113 @@ from src.utils.address_parser import AddressParser
 from src.utils.entity_extractor import EntityExtractor
 
 
+def convert_mgeo_tagging_to_qwen_flash_format(mgeo_result: Dict[str, Any], original_text: str = "") -> Dict[str, Any]:
+    """
+    将 mgeo_geographic_elements_tagging_chinese_base 模型的返回结果转换为规定格式
+    
+    新模型的实体类型映射：
+    - prov -> ProvinceName (省)
+    - city -> CityName (市)
+    - district -> ExpAreaName (区/县)
+    - town -> StreetName (街道/镇)
+    - road -> Address (路)
+    - road_number -> Address (路号)
+    - poi -> Address (POI)
+    - house_number -> Address (门牌号)
+    - other -> 其他信息（用于提取电话和姓名）
+    
+    Args:
+        mgeo_result: mgeo_geographic_elements_tagging_chinese_base 模型的返回结果
+        original_text: 原始输入文本（用于提取电话和姓名）
+    
+    Returns:
+        qwen-flash 格式的结果
+    """
+    # 检查是否是已包装的格式（包含 EBusinessID 和 Data）
+    if "EBusinessID" in mgeo_result and "Data" in mgeo_result:
+        # 从 Data 中提取 entities 和 text
+        data = mgeo_result.get("Data", {})
+        entities_data = data.get("entities", {})
+        text = data.get("text", original_text)
+        ebusiness_id = mgeo_result.get("EBusinessID", "1279441")
+        success = mgeo_result.get("Success", True)
+        reason = mgeo_result.get("Reason", "解析成功")
+        result_code = mgeo_result.get("ResultCode", "100")
+    else:
+        # 直接格式，从根级别提取
+        entities_data = mgeo_result.get("entities", {})
+        text = mgeo_result.get("text", original_text)
+        ebusiness_id = "1279441"
+        success = True
+        reason = "解析成功"
+        result_code = "100"
+    
+    # 初始化结果
+    result = _create_default_result(ebusiness_id, success, reason, result_code)
+    
+    # 检查是否有错误
+    if "error" in mgeo_result or not success:
+        result["Success"] = False
+        result["Reason"] = mgeo_result.get("error", reason if not success else DEFAULT_ERROR_REASON)
+        result["ResultCode"] = DEFAULT_ERROR_CODE
+        return result
+    
+    # 获取实体列表
+    entities = entities_data.get("output", [])
+    
+    if not entities:
+        return result
+    
+    # 按实体类型分类
+    province = ""
+    city = ""
+    district = ""
+    street = ""
+    address_entities = []
+    other_entities = []
+    
+    # 按 start 位置排序，确保顺序正确
+    sorted_entities = sorted(entities, key=lambda x: x.get("start", 0))
+    
+    for entity in sorted_entities:
+        entity_type = entity.get("type", "")
+        span = entity.get("span", "")
+        
+        # 新模型的实体类型映射
+        if entity_type == "prov":
+            province = span
+        elif entity_type == "city":
+            city = span
+        elif entity_type == "district":
+            district = span
+        elif entity_type == "town":
+            street = span
+        elif entity_type in ["road", "road_number", "poi", "house_number"]:
+            # 这些类型都归入详细地址
+            address_entities.append(entity)
+        elif entity_type == "other":
+            other_entities.append(span)
+    
+    # 填充地址信息
+    result["Data"]["ProvinceName"] = province
+    result["Data"]["CityName"] = city
+    result["Data"]["ExpAreaName"] = district
+    result["Data"]["StreetName"] = street
+    
+    # 按位置顺序组合详细地址
+    if address_entities:
+        address_entities_sorted = sorted(address_entities, key=lambda x: x.get("start", 0))
+        address_parts = [entity.get("span", "") for entity in address_entities_sorted]
+        result["Data"]["Address"] = "".join(address_parts)
+    
+    # 从原始文本中提取电话和姓名
+    _extract_phone_and_name_from_mgeo(
+        result, other_entities, sorted_entities, original_text or text
+    )
+    
+    return result
+
+
 def convert_mgeo_to_qwen_flash_format(mgeo_result: Dict[str, Any], original_text: str = "") -> Dict[str, Any]:
     """
     将 mgeo 模型的返回结果转换为规定格式

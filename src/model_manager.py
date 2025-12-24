@@ -7,6 +7,7 @@ from typing import Dict, Optional, Union
 from .siamese_uie_model import SiameseUIEModel
 from .macbert_model import MacBERTModel
 from .mgeo_geographic_composition_analysis_chinese_base_model import MGeoGeographicCompositionAnalysisModel
+from .mgeo_geographic_elements_tagging_chinese_base_model import MGeoGeographicElementsTaggingModel
 from .qwen_flash_model import QwenFlashModel
 from .constants import SUPPORTED_MODELS, MODEL_TYPES
 
@@ -33,7 +34,7 @@ class ModelManager:
             # 自动检测项目根目录（假设在src目录下）
             self.base_path = Path(__file__).parent.parent
         
-        self.models: Dict[str, Union[SiameseUIEModel, MacBERTModel, MGeoGeographicCompositionAnalysisModel, QwenFlashModel]] = {}
+        self.models: Dict[str, Union[SiameseUIEModel, MacBERTModel, MGeoGeographicCompositionAnalysisModel, MGeoGeographicElementsTaggingModel, QwenFlashModel]] = {}
         self.current_model_name: Optional[str] = None
     
     def get_model_path(self, model_name: str) -> Optional[Path]:
@@ -67,7 +68,7 @@ class ModelManager:
         
         return model_path
     
-    def load_model(self, model_name: str, force_reload: bool = False) -> Union[SiameseUIEModel, MacBERTModel, MGeoGeographicCompositionAnalysisModel, QwenFlashModel]:
+    def load_model(self, model_name: str, force_reload: bool = False) -> Union[SiameseUIEModel, MacBERTModel, MGeoGeographicCompositionAnalysisModel, MGeoGeographicElementsTaggingModel, QwenFlashModel]:
         """
         加载模型（支持缓存）
         
@@ -76,7 +77,7 @@ class ModelManager:
             force_reload: 是否强制重新加载（即使已缓存）
             
         Returns:
-            SiameseUIEModel、MacBERTModel、MGeoGeographicCompositionAnalysisModel或QwenFlashModel实例
+            SiameseUIEModel、MacBERTModel、MGeoGeographicCompositionAnalysisModel、MGeoGeographicElementsTaggingModel或QwenFlashModel实例
         """
         # 检查模型是否已加载
         if model_name in self.models and not force_reload:
@@ -100,6 +101,9 @@ class ModelManager:
             elif model_type == 'mgeo':
                 model_path = self.get_model_path(model_name)
                 model = MGeoGeographicCompositionAnalysisModel(str(model_path))
+            elif model_type == 'mgeo_tagging':
+                model_path = self.get_model_path(model_name)
+                model = MGeoGeographicElementsTaggingModel(str(model_path))
             else:  # siamese_uie
                 model_path = self.get_model_path(model_name)
                 model = SiameseUIEModel(str(model_path))
@@ -113,7 +117,7 @@ class ModelManager:
             print(error_msg)
             raise Exception(error_msg)
     
-    def get_model(self, model_name: str = None) -> Union[SiameseUIEModel, MacBERTModel, MGeoGeographicCompositionAnalysisModel, QwenFlashModel]:
+    def get_model(self, model_name: str = None) -> Union[SiameseUIEModel, MacBERTModel, MGeoGeographicCompositionAnalysisModel, MGeoGeographicElementsTaggingModel, QwenFlashModel]:
         """
         获取模型实例
         
@@ -121,7 +125,7 @@ class ModelManager:
             model_name: 模型名称，如果为None则返回当前模型
             
         Returns:
-            SiameseUIEModel、MacBERTModel、MGeoGeographicCompositionAnalysisModel或QwenFlashModel实例
+            SiameseUIEModel、MacBERTModel、MGeoGeographicCompositionAnalysisModel、MGeoGeographicElementsTaggingModel或QwenFlashModel实例
         """
         if model_name is None:
             if self.current_model_name is None:

@@ -30,8 +30,6 @@
 
 ```
 NER_demo/
-├── data/                  # 输入数据文件夹
-├── output/                # 输出结果文件夹
 ├── logs/                  # 日志文件夹（自动创建）
 │   └── inference_YYYYMMDD.log  # 推理时间日志文件（按日期）
 ├── model/                 # 模型文件夹
@@ -102,12 +100,6 @@ SHOW_DOMAINS=prod.example.com,www.example.com
 
 # 模型路径（相对于项目根目录）
 MODEL_PATH=model/nlp_structbert_siamese-uie_chinese-base
-
-# 数据文件夹路径
-DATA_DIR=data
-
-# 输出文件夹路径
-OUTPUT_DIR=output
 
 # 实体配置文件路径
 ENTITY_CONFIG_PATH=entity_config.json
