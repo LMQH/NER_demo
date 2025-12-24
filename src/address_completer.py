@@ -134,6 +134,111 @@ class AddressCompleter:
             logger.error(f"根据类型和ID查找父级区域失败: {str(e)}, parent_region_type={parent_region_type}, parent_id={parent_id}")
             return None
     
+    def find_region_by_address_and_type(self, address_text: str, region_type: int) -> Optional[Dict[str, Any]]:
+        """
+        根据Address字段和region_type查找匹配的区域信息
+        
+        查找策略：
+        1. 先使用region_type进行粗筛选（可以利用索引）
+        2. 在筛选结果中，先匹配region_name字段（支持相等或包含关系）
+        3. 如果未找到，再匹配alias_name字段（支持相等或包含关系）
+        
+        Args:
+            address_text: Address字段的文本内容
+            region_type: 区域类型（如1004=街道/镇）
+            
+        Returns:
+            区域信息字典，如果找到匹配的记录
+        """
+        if not address_text or not address_text.strip():
+            return None
+        
+        if not region_type:
+            return None
+        
+        try:
+            address_text = address_text.strip()
+            
+            # 策略1：先匹配region_name字段（相等或包含关系）
+            # 相等匹配
+            sql = f"""
+                SELECT id, parent_id, region_name, region_type, alias_name
+                FROM {self.table_name}
+                WHERE region_type = %s AND region_name = %s AND is_deleted = 0
+                LIMIT 1
+            """
+            result = self.db.execute_one(sql, (region_type, address_text))
+            if result:
+                logger.info(f"通过Address精确匹配region_name找到记录: {result.get('region_name')}")
+                return result
+            
+            # 包含关系匹配（Address包含region_name，或region_name包含Address）
+            # 优先匹配region_name包含Address的情况（更精确）
+            pattern = f"%{address_text}%"
+            sql = f"""
+                SELECT id, parent_id, region_name, region_type, alias_name
+                FROM {self.table_name}
+                WHERE region_type = %s 
+                  AND (region_name LIKE %s OR LOCATE(region_name, %s) > 0)
+                  AND is_deleted = 0
+                ORDER BY 
+                    CASE 
+                        WHEN region_name = %s THEN 1
+                        WHEN region_name LIKE %s THEN 2
+                        WHEN LOCATE(region_name, %s) > 0 THEN 3
+                        ELSE 4
+                    END,
+                    LENGTH(region_name) DESC
+                LIMIT 1
+            """
+            result = self.db.execute_one(sql, (region_type, pattern, address_text, address_text, pattern, address_text))
+            if result:
+                logger.info(f"通过Address包含匹配region_name找到记录: {result.get('region_name')}")
+                return result
+            
+            # 策略2：如果region_name未匹配成功，尝试匹配alias_name字段
+            # 相等匹配
+            sql = f"""
+                SELECT id, parent_id, region_name, region_type, alias_name
+                FROM {self.table_name}
+                WHERE region_type = %s AND alias_name = %s AND is_deleted = 0
+                LIMIT 1
+            """
+            result = self.db.execute_one(sql, (region_type, address_text))
+            if result:
+                logger.info(f"通过Address精确匹配alias_name找到记录: {result.get('region_name')}, alias={result.get('alias_name')}")
+                return result
+            
+            # 包含关系匹配alias_name
+            pattern = f"%{address_text}%"
+            sql = f"""
+                SELECT id, parent_id, region_name, region_type, alias_name
+                FROM {self.table_name}
+                WHERE region_type = %s 
+                  AND alias_name IS NOT NULL 
+                  AND alias_name != ''
+                  AND (alias_name LIKE %s OR LOCATE(alias_name, %s) > 0)
+                  AND is_deleted = 0
+                ORDER BY 
+                    CASE 
+                        WHEN alias_name = %s THEN 1
+                        WHEN alias_name LIKE %s THEN 2
+                        WHEN LOCATE(alias_name, %s) > 0 THEN 3
+                        ELSE 4
+                    END,
+                    LENGTH(alias_name) DESC
+                LIMIT 1
+            """
+            result = self.db.execute_one(sql, (region_type, pattern, address_text, address_text, pattern, address_text))
+            if result:
+                logger.info(f"通过Address包含匹配alias_name找到记录: {result.get('region_name')}, alias={result.get('alias_name')}")
+                return result
+            
+            return None
+        except Exception as e:
+            logger.error(f"根据Address和region_type查找区域信息失败: {str(e)}, address_text={address_text}, region_type={region_type}")
+            return None
+    
     def get_parent_region_type(self, current_region_type: int) -> Optional[int]:
         """
         根据当前区域类型推断父级区域类型
@@ -319,7 +424,10 @@ class AddressCompleter:
         
         补全逻辑：
         1. 如果StreetName存在，从StreetName开始向上查找
-        2. 如果StreetName为空，从ExpAreaName开始向上查找
+        2. 如果StreetName为空，先使用region_type=1004进行粗筛，再用Address去匹配数据库里的region_name字段
+           - 只要两者相等或者有字符串的包含关系，就从此条记录开始向上查找并补全
+           - 若未找到相等或包含关系的记录，则匹配alias_name字段
+           - 若仍未找到相关记录，则跳过，直接执行从ExpAreaName开始向上查找
         3. 如果ExpAreaName也为空，从CityName开始向上查找
         4. 如果CityName也为空，从ProvinceName开始向上查找
         
@@ -340,34 +448,53 @@ class AddressCompleter:
             start_field = None
             start_value = None
             start_type = None
+            start_region = None
             
             # 按优先级查找起始点
             if data.get('StreetName') and data.get('StreetName').strip():
                 start_field = 'StreetName'
                 start_value = data.get('StreetName')
                 start_type = self.region_type_map.get('StreetName')
-            elif data.get('ExpAreaName') and data.get('ExpAreaName').strip():
-                start_field = 'ExpAreaName'
-                start_value = data.get('ExpAreaName')
-                start_type = self.region_type_map.get('ExpAreaName')
-            elif data.get('CityName') and data.get('CityName').strip():
-                start_field = 'CityName'
-                start_value = data.get('CityName')
-                start_type = self.region_type_map.get('CityName')
-            elif data.get('ProvinceName') and data.get('ProvinceName').strip():
-                start_field = 'ProvinceName'
-                start_value = data.get('ProvinceName')
-                start_type = self.region_type_map.get('ProvinceName')
+                # 查找起始区域
+                start_region = self.find_region_by_name(start_value, start_type)
+            elif data.get('Address') and data.get('Address').strip():
+                # StreetName为空时，尝试从Address字段查找
+                address_text = data.get('Address').strip()
+                street_region_type = self.region_type_map.get('StreetName')  # 1004
+                
+                # 使用region_type=1004进行粗筛，再用Address匹配region_name或alias_name
+                start_region = self.find_region_by_address_and_type(address_text, street_region_type)
+                
+                if start_region:
+                    # 找到了匹配的记录，从此条记录开始向上查找
+                    start_field = 'StreetName'
+                    start_value = start_region.get('region_name', '')
+                    start_type = street_region_type
+                    logger.info(f"通过Address字段找到匹配的街道记录: {start_value}")
+                else:
+                    # 未找到匹配记录，跳过，继续执行从ExpAreaName开始向上查找
+                    logger.debug(f"通过Address字段未找到匹配的街道记录，继续从ExpAreaName查找")
             
-            if not start_value:
-                logger.warning("地址数据中没有任何可用的区域信息，无法进行补全")
-                return result
-            
-            # 查找起始区域
-            start_region = self.find_region_by_name(start_value, start_type)
+            # 如果通过Address未找到，或者Address为空，继续按原有逻辑查找
+            if not start_region:
+                if data.get('ExpAreaName') and data.get('ExpAreaName').strip():
+                    start_field = 'ExpAreaName'
+                    start_value = data.get('ExpAreaName')
+                    start_type = self.region_type_map.get('ExpAreaName')
+                    start_region = self.find_region_by_name(start_value, start_type)
+                elif data.get('CityName') and data.get('CityName').strip():
+                    start_field = 'CityName'
+                    start_value = data.get('CityName')
+                    start_type = self.region_type_map.get('CityName')
+                    start_region = self.find_region_by_name(start_value, start_type)
+                elif data.get('ProvinceName') and data.get('ProvinceName').strip():
+                    start_field = 'ProvinceName'
+                    start_value = data.get('ProvinceName')
+                    start_type = self.region_type_map.get('ProvinceName')
+                    start_region = self.find_region_by_name(start_value, start_type)
             
             if not start_region:
-                logger.warning(f"未在数据库中找到匹配的区域: {start_field}={start_value}")
+                logger.warning(f"未在数据库中找到匹配的区域: start_field={start_field}, start_value={start_value}")
                 return result
             
             # 获取父级链

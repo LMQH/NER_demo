@@ -125,6 +125,15 @@ def convert_mgeo_to_qwen_flash_format(mgeo_result: Dict[str, Any], original_text
     """
     将 mgeo 模型的返回结果转换为规定格式
     
+    实体类型映射：
+    - PB -> ProvinceName (省)
+    - PC -> CityName (市)
+    - PD -> ExpAreaName (区/县)
+    - PF -> StreetName (街道/镇)
+    - RD, UA, NumEng -> Address (详细地址)
+    - Entity, Brand, POI -> Address (机构名称、品牌、兴趣点，如"绥棱林业局有限公司")
+    - ZZ -> 其他信息（用于提取电话和姓名）
+    
     Args:
         mgeo_result: mgeo 模型的返回结果，可能是两种格式:
             格式1（直接返回）:
@@ -133,6 +142,7 @@ def convert_mgeo_to_qwen_flash_format(mgeo_result: Dict[str, Any], original_text
                     "entities": {
                         "output": [
                             {"type": "PB", "start": 0, "end": 3, "prob": ..., "span": "广东省"},
+                            {"type": "Entity", "start": 9, "end": 17, "span": "绥棱林业局有限公司"},
                             ...
                         ]
                     }
@@ -227,6 +237,10 @@ def convert_mgeo_to_qwen_flash_format(mgeo_result: Dict[str, Any], original_text
         elif entity_type == ENTITY_TYPE_STREET:
             street = span
         elif entity_type in [ENTITY_TYPE_ROAD, ENTITY_TYPE_UNIT_ADDRESS, ENTITY_TYPE_NUMBER_ENG]:
+            address_entities.append(entity)
+        elif entity_type in ["Entity", "Brand", "POI"]:
+            # 将Entity（POI一般名称）、Brand（著名品牌）、POI（兴趣点）也归入详细地址
+            # 这样可以保留如"绥棱林业局有限公司"这类机构名称信息
             address_entities.append(entity)
         elif entity_type == ENTITY_TYPE_OTHER:
             other_entities.append(span)

@@ -25,8 +25,8 @@ class DatabaseConnection:
         self.charset = os.getenv('MYSQL_CHARSET', 'utf8mb4')
         
         # 连接池配置
-        self.max_connections = int(os.getenv('MYSQL_MAX_CONNECTIONS', '10'))
-        self.connect_timeout = int(os.getenv('MYSQL_CONNECT_TIMEOUT', '10'))
+        self.max_connections = int(os.getenv('MYSQL_MAX_CONNECTIONS', '10')) # 连接池最大连接数
+        self.connect_timeout = int(os.getenv('MYSQL_CONNECT_TIMEOUT', '10')) # 连接超时时间
         
         # 验证必要配置
         if not self.database:
