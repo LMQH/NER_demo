@@ -1,6 +1,15 @@
 {
   "entities": {
     "人物": null,
+    "省份": null,
+    "CityName": null,
+    "区县": null,
+    "街道": null,
+    "地址": null,
+    "门牌号": null,
+    "路号": null,
+    "POI": null,
+    "电话": null,
     "地理位置": null,
     "组织机构": null,
     "时间": null,
