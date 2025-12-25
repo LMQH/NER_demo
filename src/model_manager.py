@@ -4,12 +4,11 @@
 """
 from pathlib import Path
 from typing import Dict, Optional, Union
-from .siamese_uie_model import SiameseUIEModel
-from .macbert_model import MacBERTModel
-from .mgeo_geographic_composition_analysis_chinese_base_model import MGeoGeographicCompositionAnalysisModel
-from .mgeo_geographic_elements_tagging_chinese_base_model import MGeoGeographicElementsTaggingModel
-from .qwen_flash_model import QwenFlashModel
-from .constants import SUPPORTED_MODELS, MODEL_TYPES
+from .models import (
+    SiameseUIEModel, MacBERTModel, MGeoGeographicCompositionAnalysisModel,
+    MGeoGeographicElementsTaggingModel, QwenFlashModel
+)
+from .config.constants import SUPPORTED_MODELS, MODEL_TYPES
 
 
 class ModelManager:

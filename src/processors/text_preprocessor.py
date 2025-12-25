@@ -8,8 +8,8 @@ import re
 import logging
 from typing import Dict, Any, Optional
 from dashscope import Generation
-from .constants import ADDRESS_KEYWORDS, PHONE_PATTERN, FIXED_PHONE_PATTERN, CHINESE_NAME_PATTERN
-from .utils.exceptions import NERDemoException
+from src.config.constants import ADDRESS_KEYWORDS, PHONE_PATTERN, FIXED_PHONE_PATTERN, CHINESE_NAME_PATTERN
+from src.utils.exceptions import NERDemoException
 
 logger = logging.getLogger(__name__)
 

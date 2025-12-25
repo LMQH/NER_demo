@@ -4,10 +4,9 @@ API 依赖项
 """
 from fastapi import Depends
 from src.model_manager import ModelManager
-from src.file_reader import FileReader
-from src.config_manager import ConfigManager
-from src.db_connection import DatabaseConnection
-from src.address_completer import AddressCompleter
+from src.processors import FileReader, AddressCompleter
+from src.config import ConfigManager
+from src.database import DatabaseConnection
 from pathlib import Path
 
 # 这些将在 app.py 中初始化

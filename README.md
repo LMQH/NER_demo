@@ -1,6 +1,6 @@
 # NER Demo
 
-基于ModelScope SiameseUIE模型的中文命名实体识别（NER）演示程序。
+基于多种模型的中文命名实体识别（NER）和信息抽取演示程序，支持Qwen-Flash、SiameseUIE、MacBERT、MGeo等多个模型，适用于地址解析、实体抽取、关系抽取等多种场景。
 
 ## 功能特性
 
@@ -35,15 +35,38 @@ NER_demo/
 ├── model/                 # 模型文件夹
 │   ├── nlp_structbert_siamese-uie_chinese-base/
 │   ├── chinese-macbert-base/
-│   └── mgeo_geographic_composition_analysis_chinese_base/
+│   ├── mgeo_geographic_composition_analysis_chinese_base/
+│   └── mgeo_geographic_elements_tagging_chinese_base/
 ├── src/                   # 源代码文件夹
-│   ├── config_manager.py  # 配置管理模块
-│   ├── file_reader.py     # 文件读取模块
-│   ├── siamese_uie_model.py  # SiameseUIE模型调用模块
-│   ├── macbert_model.py      # MacBERT模型调用模块
-│   ├── mgeo_geographic_composition_analysis_chinese_base_model.py  # MGeo地理组成分析模型调用模块
-│   ├── qwen_flash_model.py   # Qwen-Flash模型调用模块
-│   ├── model_manager.py      # 模型管理器模块
+│   ├── api/               # API相关模块
+│   │   ├── routes/        # 路由模块
+│   │   │   ├── extract.py # 实体抽取路由
+│   │   │   ├── file.py    # 文件处理路由
+│   │   │   └── system.py  # 系统路由
+│   │   ├── schemas.py     # API数据模型
+│   │   └── dependencies.py # 依赖注入
+│   ├── config/            # 配置模块
+│   │   ├── config_manager.py  # 配置管理器
+│   │   ├── env_loader.py      # 环境变量加载器
+│   │   └── constants.py       # 常量定义
+│   ├── database/          # 数据库模块
+│   │   └── db_connection.py   # 数据库连接
+│   ├── models/            # 模型模块
+│   │   ├── siamese_uie_model.py  # SiameseUIE模型
+│   │   ├── macbert_model.py      # MacBERT模型
+│   │   ├── qwen_flash_model.py   # Qwen-Flash模型
+│   │   ├── mgeo_geographic_composition_analysis_chinese_base_model.py  # MGeo地理组成分析模型
+│   │   └── mgeo_geographic_elements_tagging_chinese_base_model.py  # MGeo地理要素标注模型
+│   ├── processors/        # 处理模块
+│   │   ├── address_completer.py  # 地址补全处理
+│   │   ├── text_preprocessor.py  # 文本预处理
+│   │   ├── file_reader.py        # 文件读取处理
+│   │   └── converters.py         # 格式转换处理
+│   ├── utils/             # 工具模块
+│   │   ├── address_parser.py     # 地址解析器
+│   │   ├── entity_extractor.py   # 实体提取器
+│   │   └── exceptions.py         # 异常定义
+│   ├── model_manager.py   # 模型管理器
 │   └── main.py            # 主程序入口
 ├── entity_config.json     # 实体配置文件
 ├── app.py                # FastAPI API服务主程序
@@ -335,7 +358,7 @@ python test/test_model_load.py
 
 ## 支持的模型
 
-项目目前支持以下四个模型：
+项目目前支持以下五个模型：
 
 ### 1. Qwen-Flash模型 (`qwen-flash`) ⭐推荐
 
@@ -377,6 +400,18 @@ python test/test_model_load.py
   - 支持识别省份、城市、区县、街道、POI、品牌等多种地理实体类型
 - **输出格式**：返回地址成分列表，每个成分包含类型、位置和文本内容
 
+### 5. MGeo地理要素标注模型 (`mgeo_geographic_elements_tagging_chinese_base`)
+
+- **用途**：地理要素标注和地址成分识别
+- **支持任务**：地理要素标注（Geographic Elements Tagging）
+- **模型路径**：`model/mgeo_geographic_elements_tagging_chinese_base/`（如果使用本地模型）
+- **适用场景**：地址解析、地理实体识别、地址成分提取等场景
+- **特殊说明**：
+  - 使用token-classification任务，**不需要schema参数**
+  - 自动识别地址中的省份（prov）、城市（city）、区县（district）、街道（town）、道路（road）等要素
+  - 支持识别POI、门牌号、路号等多种地址成分
+- **输出格式**：返回地理要素列表，每个要素包含类型、位置和文本内容
+
 ## 注意事项
 
 1. **模型文件**：
@@ -390,6 +425,8 @@ python test/test_model_load.py
      - `model/nlp_structbert_siamese-uie_chinese-base/`
      - `model/chinese-macbert-base/`
      - `model/mgeo_geographic_composition_analysis_chinese_base/`
+     - `model/mgeo_geographic_elements_tagging_chinese_base/`（如果使用本地模型）
+     - `model/mgeo_geographic_elements_tagging_chinese_base/`（如果使用本地模型）
 
 2. **依赖版本**：请严格按照 `requirements.txt` 中的版本要求安装依赖，避免版本兼容性问题。
    - **注意**：MGeo模型可能需要特定版本的transformers，如果遇到兼容性问题，代码会自动尝试使用ModelScope模型ID加载（推荐方式）
@@ -474,7 +511,7 @@ A: 根据任务类型选择：
   - 输出统一的结构化数据（省份、城市、区县、街道、详细地址、人名、电话）
 - **通用信息抽取**（NER、关系抽取、事件抽取等）：使用 `nlp_structbert_siamese-uie_chinese-base`
 - **简单命名实体识别**：使用 `chinese-macbert-base`
-- **地址成分分析和地理实体识别**：使用 `mgeo_geographic_composition_analysis_chinese_base`
+- **地址成分分析和地理实体识别**：使用 `mgeo_geographic_composition_analysis_chinese_base` 或 `mgeo_geographic_elements_tagging_chinese_base`
 
 在API请求中通过 `model` 参数指定模型名称。
 

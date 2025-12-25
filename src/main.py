@@ -9,9 +9,9 @@ from pathlib import Path
 from datetime import datetime
 from typing import Dict, Any
 
-from .config_manager import ConfigManager
-from .file_reader import FileReader
-from .siamese_uie_model import SiameseUIEModel
+from .config import ConfigManager
+from .processors import FileReader
+from .models import SiameseUIEModel
 
 
 class NERDemo:
