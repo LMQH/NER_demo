@@ -5,7 +5,7 @@ import time
 import logging
 from fastapi import APIRouter, HTTPException, Depends
 from src.api.schemas import ExtractRequest, ExtractResponse, BatchExtractRequest, BatchExtractResponse
-from src.api.converters import convert_mgeo_to_qwen_flash_format, convert_mgeo_tagging_to_qwen_flash_format, convert_ner_to_address_format
+from src.processors.converters import convert_mgeo_to_qwen_flash_format, convert_mgeo_tagging_to_qwen_flash_format, convert_ner_to_address_format
 from src.api.dependencies import get_model_manager, get_file_reader, get_config_manager, get_address_completer
 
 router = APIRouter()

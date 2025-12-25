@@ -8,7 +8,7 @@ from typing import Optional
 import docx
 import PyPDF2
 from pypdf import PdfReader
-from .constants import SUPPORTED_FILE_EXTENSIONS
+from src.config.constants import SUPPORTED_FILE_EXTENSIONS
 
 
 class FileReader:

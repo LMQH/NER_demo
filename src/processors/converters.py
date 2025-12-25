@@ -3,7 +3,7 @@
 用于将不同模型的返回结果转换为统一格式
 """
 from typing import Dict, Any, Optional, List
-from src.constants import (
+from src.config.constants import (
     DEFAULT_EBUSINESS_ID, DEFAULT_SUCCESS_CODE, DEFAULT_ERROR_CODE,
     DEFAULT_SUCCESS_REASON, DEFAULT_ERROR_REASON, DEFAULT_ENTITY_MAPPING,
     ENTITY_TYPE_PROVINCE, ENTITY_TYPE_CITY, ENTITY_TYPE_DISTRICT,
@@ -482,7 +482,7 @@ def _extract_phone_and_name_from_mgeo(
 ) -> None:
     """从MGeo模型的other_entities中提取电话和姓名"""
     import re
-    from src.constants import PHONE_PATTERN, CHINESE_NAME_PATTERN, ADDRESS_KEYWORDS
+    from src.config.constants import PHONE_PATTERN, CHINESE_NAME_PATTERN, ADDRESS_KEYWORDS
     
     # 首先尝试从 other_entities 中识别
     for entity_text in other_entities:

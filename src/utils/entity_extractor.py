@@ -4,7 +4,7 @@
 """
 import re
 from typing import Dict, Any, List, Optional
-from ..constants import (
+from ..config.constants import (
     ENTITY_TYPE_PROVINCE, ENTITY_TYPE_CITY, ENTITY_TYPE_DISTRICT,
     ENTITY_TYPE_STREET, ENTITY_TYPE_ROAD, ENTITY_TYPE_UNIT_ADDRESS,
     ENTITY_TYPE_NUMBER_ENG, ENTITY_TYPE_OTHER, PHONE_PATTERN,

@@ -28,9 +28,9 @@ else:
     print("⚠ 未找到 .env 或 dev.env 文件，将使用系统环境变量")
 
 from src.model_manager import ModelManager
-from src.file_reader import FileReader
-from src.config_manager import ConfigManager
-from src.db_connection import DatabaseConnection
+from src.processors import FileReader
+from src.config import ConfigManager
+from src.database import DatabaseConnection
 from src.api.dependencies import init_dependencies
 from src.api.routes import system, extract, file
 

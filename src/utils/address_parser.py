@@ -4,7 +4,7 @@
 """
 import re
 from typing import Dict, List, Tuple
-from ..constants import (
+from ..config.constants import (
     ADDRESS_KEYWORDS, DIRECT_CITIES, PROVINCE_PATTERN,
     CITY_PATTERN, DISTRICT_PATTERN, STREET_PATTERN
 )
@@ -100,7 +100,7 @@ class AddressParser:
         Returns:
             包含phone和name的字典
         """
-        from ..constants import PHONE_PATTERN, FIXED_PHONE_PATTERN, CHINESE_NAME_PATTERN
+        from ..config.constants import PHONE_PATTERN, FIXED_PHONE_PATTERN, CHINESE_NAME_PATTERN
         
         result = {"phone": "", "name": ""}
         
@@ -164,7 +164,7 @@ class AddressParser:
         Returns:
             找到的姓名，如果未找到则返回空字符串
         """
-        from ..constants import CHINESE_NAME_PATTERN, ADDRESS_KEYWORDS
+        from ..config.constants import CHINESE_NAME_PATTERN, ADDRESS_KEYWORDS
         
         merged_ranges = AddressParser.merge_address_ranges(address_ranges)
         

@@ -5,7 +5,7 @@
 import os
 import logging
 from typing import Dict, Any, Optional
-from src.db_connection import DatabaseConnection
+from src.database import DatabaseConnection
 
 logger = logging.getLogger("NER_API")
 
