@@ -6,6 +6,61 @@
     "时间": null,
     "事件": null
   },
-  "description": "实体抽取配置，支持命名实体识别（NER）任务"
+  "description": "实体抽取配置，支持命名实体识别（NER）任务",
+  "output_schema": {
+    "description": "输出格式映射配置，定义如何将识别的实体映射到输出格式",
+    "format": {
+      "EBusinessID": "1279441",
+      "Data": {
+        "ProvinceName": "",
+        "StreetName": "",
+        "Address": "",
+        "CityName": "",
+        "ExpAreaName": "",
+        "Mobile": "",
+        "Name": ""
+      },
+      "Success": true,
+      "Reason": "解析成功",
+      "ResultCode": "100"
+    },
+    "mapping": {
+      "ProvinceName": {
+        "entity_types": ["地理位置"],
+        "patterns": ["省", "自治区", "特别行政区"],
+        "description": "省份名称，从地理位置实体中提取包含'省'、'自治区'或'特别行政区'的实体"
+      },
+      "CityName": {
+        "entity_types": ["地理位置"],
+        "patterns": ["市"],
+        "description": "城市名称，从地理位置实体中提取包含'市'的实体"
+      },
+      "ExpAreaName": {
+        "entity_types": ["地理位置"],
+        "patterns": ["区", "县"],
+        "description": "区县名称，从地理位置实体中提取包含'区'或'县'的实体"
+      },
+      "StreetName": {
+        "entity_types": ["地理位置"],
+        "patterns": ["街道", "镇", "乡"],
+        "description": "街道名称，从地理位置实体中提取包含'街道'、'镇'或'乡'的实体"
+      },
+      "Address": {
+        "entity_types": ["地理位置"],
+        "patterns": ["路", "街", "大道", "巷", "号", "弄", "里"],
+        "description": "详细地址，从地理位置实体中提取包含'路'、'街'、'大道'、'巷'、'号'等的实体"
+      },
+      "Name": {
+        "entity_types": ["人物"],
+        "patterns": [],
+        "description": "姓名，从人物实体中提取"
+      },
+      "Mobile": {
+        "entity_types": [],
+        "patterns": ["1[3-9]\\d{9}"],
+        "description": "手机号码，使用正则表达式从文本中提取11位手机号"
+      }
+    }
+  }
 }
 

@@ -36,6 +36,13 @@ wheels/
 # 输出文件
 output/*.json
 
+# 日志文件
+logs/
+*.log
+
+# 数据文件夹
+data/
+
 # 系统文件
 .DS_Store
 Thumbs.db
