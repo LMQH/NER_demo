@@ -12,11 +12,11 @@ async def upload_file():
     """
     文件上传接口（已废弃）
     
-    此接口已废弃，请使用批量实体抽取接口直接传递文件内容。
+    此接口已废弃，请使用实体抽取接口直接传递文本内容。
     """
     raise HTTPException(
         status_code=410,
-        detail="文件上传接口已废弃。请使用 /api/batch/extract 接口，通过 files 字段直接传递文件内容。"
+        detail="文件上传接口已废弃。请使用 /api/extract 接口，通过 Content 字段直接传递文本内容。"
     )
 
 
@@ -25,10 +25,10 @@ async def upload_multiple_files():
     """
     多文件上传接口（已废弃）
     
-    此接口已废弃，请使用批量实体抽取接口直接传递文件内容。
+    此接口已废弃，请使用实体抽取接口直接传递文本内容。
     """
     raise HTTPException(
         status_code=410,
-        detail="多文件上传接口已废弃。请使用 /api/batch/extract 接口，通过 files 字段直接传递文件内容。"
+        detail="多文件上传接口已废弃。请使用 /api/extract 接口，通过 Content 字段直接传递文本内容。"
     )
 

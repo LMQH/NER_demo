@@ -106,7 +106,7 @@
       }
     },
     {
-      "name": "关系抽取示例",
+      "name": "实体抽取 - SiameseUIE模型（命名实体识别）",
       "request": {
         "method": "POST",
         "header": [
@@ -117,7 +117,7 @@
         ],
         "body": {
           "mode": "raw",
-          "raw": "{\n  \"Content\": \"广东省深圳市龙岗区坂田街道长坑路西2巷2号202 黄大大 18273778575\",\n  \"model\": \"nlp_structbert_siamese-uie_chinese-base\",\n  \"schema\": {\n    \"人物\": {\n      \"比赛项目(赛事名称)\": null,\n      \"参赛地点(城市)\": null,\n      \"获奖时间(时间)\": null\n    }\n  }\n}"
+          "raw": "{\n  \"Content\": \"1944年毕业于北大的名古屋铁道会长谷口清太郎等人在日本积极筹资。\",\n  \"model\": \"nlp_structbert_siamese-uie_chinese-base\",\n  \"schema\": {\n    \"人物\": null,\n    \"地理位置\": null,\n    \"组织机构\": null,\n    \"时间\": null\n  }\n}"
         },
         "url": {
           "raw": "http://localhost:8000/api/extract",
@@ -126,11 +126,11 @@
           "port": "8000",
           "path": ["api", "extract"]
         },
-        "description": "使用SiameseUIE模型进行关系抽取示例"
+        "description": "使用SiameseUIE模型进行命名实体识别（NER）\n\n支持抽取的实体类型：人物、地理位置、组织机构、时间等\n需要提供schema参数定义要抽取的实体类型"
       }
     },
     {
-      "name": "批量处理 - 文件内容列表",
+      "name": "实体抽取 - MacBERT模型（命名实体识别）",
       "request": {
         "method": "POST",
         "header": [
@@ -141,20 +141,20 @@
         ],
         "body": {
           "mode": "raw",
-          "raw": "{\n  \"files\": [\n    {\n      \"filename\": \"example1.txt\",\n      \"content\": \"广东省深圳市龙岗区坂田街道长坑路西2巷2号202 黄大大 18273778575\"\n    },\n    {\n      \"filename\": \"example2.txt\",\n      \"content\": \"广东省深圳市龙岗区坂田街道长坑路西2巷2号202 黄大大 18273778575\"\n    }\n  ],\n  \"model\": \"nlp_structbert_siamese-uie_chinese-base\",\n  \"schema\": {\n    \"人物\": null,\n    \"地理位置\": null,\n    \"组织机构\": null,\n    \"时间\": null\n  }\n}"
+          "raw": "{\n  \"Content\": \"1944年毕业于北大的名古屋铁道会长谷口清太郎等人在日本积极筹资。\",\n  \"model\": \"chinese-macbert-base\",\n  \"schema\": {\n    \"人物\": null,\n    \"地理位置\": null,\n    \"组织机构\": null,\n    \"时间\": null\n  }\n}"
         },
         "url": {
-          "raw": "http://localhost:8000/api/batch/extract",
+          "raw": "http://localhost:8000/api/extract",
           "protocol": "http",
           "host": ["localhost"],
           "port": "8000",
-          "path": ["api", "batch", "extract"]
+          "path": ["api", "extract"]
         },
-        "description": "批量实体抽取 - 直接提供文件内容列表（必需方式）\n\n注意：files字段为必需字段，必须提供文件内容列表。\n系统会自动记录批量推理时间（总耗时和平均每文件耗时）到日志文件。"
+        "description": "使用MacBERT模型进行命名实体识别（NER）\n\nMacBERT是改进的BERT模型，支持基于规则的命名实体识别\n需要提供schema参数定义要抽取的实体类型"
       }
     },
     {
-      "name": "批量处理 - 使用mgeo模型（地理组成分析）",
+      "name": "关系抽取示例 - SiameseUIE",
       "request": {
         "method": "POST",
         "header": [
@@ -165,40 +165,16 @@
         ],
         "body": {
           "mode": "raw",
-          "raw": "{\n  \"files\": [\n    {\n      \"filename\": \"geographic1.txt\",\n      \"content\": \"广东省深圳市龙岗区坂田街道长坑路西2巷2号202 黄大大 18273778575\"\n    },\n    {\n      \"filename\": \"geographic2.txt\",\n      \"content\": \"广东省深圳市龙岗区坂田街道长坑路西2巷2号202 黄大大 18273778575\"\n    }\n  ],\n  \"model\": \"mgeo_geographic_composition_analysis_chinese_base\",\n  \"schema\": {\n    \"地理实体\": null,\n    \"地理位置\": null,\n    \"地理组成\": null\n  }\n}"
+          "raw": "{\n  \"Content\": \"在北京冬奥会自由式滑雪中，中国选手谷爱凌获得金牌。\",\n  \"model\": \"nlp_structbert_siamese-uie_chinese-base\",\n  \"schema\": {\n    \"人物\": {\n      \"比赛项目(赛事名称)\": null,\n      \"参赛地点(城市)\": null,\n      \"获奖时间(时间)\": null\n    }\n  }\n}"
         },
         "url": {
-          "raw": "http://localhost:8000/api/batch/extract",
+          "raw": "http://localhost:8000/api/extract",
           "protocol": "http",
           "host": ["localhost"],
           "port": "8000",
-          "path": ["api", "batch", "extract"]
+          "path": ["api", "extract"]
         },
-        "description": "使用MGeo地理组成分析模型进行批量地理实体抽取\n\n注意：MGeo模型不需要schema参数，即使提供也会被忽略。"
-      }
-    },
-    {
-      "name": "批量处理 - 使用mgeo模型（地理要素标注）",
-      "request": {
-        "method": "POST",
-        "header": [
-          {
-            "key": "Content-Type",
-            "value": "application/json"
-          }
-        ],
-        "body": {
-          "mode": "raw",
-          "raw": "{\n  \"files\": [\n    {\n      \"filename\": \"address1.txt\",\n      \"content\": \"浙江省杭州市余杭区五常街道文一西路969号淘宝城5号楼\"\n    },\n    {\n      \"filename\": \"address2.txt\",\n      \"content\": \"义乌市丹阳街129号\"\n    },\n    {\n      \"filename\": \"address3.txt\",\n      \"content\": \"巨溪镇朝阳村委会办公楼3单元\"\n    }\n  ],\n  \"model\": \"mgeo_geographic_elements_tagging_chinese_base\",\n  \"schema\": {\n    \"地理实体\": null,\n    \"地理位置\": null,\n    \"地理组成\": null\n  }\n}"
-        },
-        "url": {
-          "raw": "http://localhost:8000/api/batch/extract",
-          "protocol": "http",
-          "host": ["localhost"],
-          "port": "8000",
-          "path": ["api", "batch", "extract"]
-        },
-        "description": "使用MGeo地理要素标注模型进行批量地址要素解析\n\n该模型可以将门址地址拆分成独立语义的要素，并对这些要素进行类型识别。\n支持的要素类型：prov(省)、city(市)、district(区/县)、town(街道/镇)、road(路)、road_number(路号)、poi(兴趣点)、house_number(门牌号)、other(其他)\n\n注意：MGeo模型不需要schema参数，即使提供也会被忽略。"
+        "description": "使用SiameseUIE模型进行关系抽取示例\n\n关系抽取格式：{\"主语实体\": {\"关系(宾语实体)\": null}}\n可以抽取实体之间的复杂关系"
       }
     }
   ]

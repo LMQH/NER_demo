@@ -4,16 +4,16 @@
 
 NER Demo API 提供了基于FastAPI的RESTful接口，支持前端传入文本和模型选择进行命名实体识别（NER）任务。
 
-**支持的模型：**
+**支持的模型（共5个）：**
 - `qwen-flash` - Qwen-Flash大模型，通过API调用进行地址实体抽取（推荐，默认模型）
 - `chinese-macbert-base` - MacBERT基础模型，支持命名实体识别
 - `nlp_structbert_siamese-uie_chinese-base` - SiameseUIE通用信息抽取模型，支持NER、关系抽取、事件抽取、属性情感抽取
 - `mgeo_geographic_composition_analysis_chinese_base` - MGeo地理组成分析模型，支持地理实体识别和地理组成分析
+- `mgeo_geographic_elements_tagging_chinese_base` - MGeo地理要素标注模型，支持地理要素标注和地址成分识别
 
 **功能特性：**
 - ✅ 自动记录推理时间并写入日志文件
-- ✅ 支持单条和批量实体抽取
-- ✅ 支持文件上传和批量处理
+- ✅ 支持单条实体抽取
 - ✅ 自动API文档（Swagger UI和ReDoc）
 - ✅ 完善的错误处理和日志记录
 
@@ -85,9 +85,10 @@ curl http://localhost:8000/api/models
     "chinese-macbert-base",
     "nlp_structbert_siamese-uie_chinese-base",
     "mgeo_geographic_composition_analysis_chinese_base",
+    "mgeo_geographic_elements_tagging_chinese_base",
     "qwen-flash"
   ],
-  "count": 4
+  "count": 5
 }
 ```
 
@@ -137,6 +138,7 @@ Content-Type: application/json
     - `chinese-macbert-base` - MacBERT基础模型，支持命名实体识别
     - `nlp_structbert_siamese-uie_chinese-base` - SiameseUIE通用信息抽取模型，支持NER、关系抽取、事件抽取、属性情感抽取
     - `mgeo_geographic_composition_analysis_chinese_base` - MGeo地理组成分析模型，支持地理实体识别和地理组成分析
+    - `mgeo_geographic_elements_tagging_chinese_base` - MGeo地理要素标注模型，支持地理要素标注和地址成分识别
 - `schema` (可选): 实体抽取配置，定义要抽取的实体类型（qwen-flash模型不使用此参数，会被忽略）
   - 命名实体识别格式：`{"实体类型": null}`
   - 关系抽取格式：`{"主语实体": {"关系(宾语实体)": null}}`
@@ -250,266 +252,6 @@ curl -X POST http://localhost:8000/api/extract \
 1. qwen-flash模型不需要schema参数，会自动识别地址、人名、电话
 2. 系统会自动记录推理时间到日志文件（`logs/inference_YYYYMMDD.log`）
 3. qwen-flash模型需要配置 `DASHSCOPE_API_KEY` 环境变量
-
----
-
-### 4. 批量实体抽取
-
-**接口地址：** `POST /api/batch/extract`
-
-**说明：** 批量处理多个文件的实体抽取。支持两种方式：
-1. 使用files字段：直接提供文件内容列表
-2. 使用file_names字段：从data目录读取文件
-
-系统会自动记录批量推理时间到日志文件。
-
-**请求头：**
-```
-Content-Type: application/json
-```
-
-**请求体（JSON）：**
-
-**方式1：直接提供文件内容**
-```json
-{
-  "files": [
-    {
-      "filename": "example1.txt",
-      "content": "1944年毕业于北大的名古屋铁道会长谷口清太郎等人在日本积极筹资。"
-    },
-    {
-      "filename": "example2.txt",
-      "content": "在北京冬奥会自由式滑雪中，中国选手谷爱凌获得金牌。"
-    }
-  ],
-  "model": "nlp_structbert_siamese-uie_chinese-base",
-  "schema": {
-    "人物": null,
-    "地理位置": null,
-    "组织机构": null
-  }
-}
-```
-
-**方式2：从data目录读取文件**
-```json
-{
-  "file_names": ["example.txt"],
-  "model": "nlp_structbert_siamese-uie_chinese-base"
-}
-```
-
-**请求参数说明：**
-- `files` (可选): 文件内容列表，每个文件包含：
-  - `filename`: 文件名
-  - `content`: 文件内容
-- `file_names` (可选): 文件名列表，从data目录读取文件内容
-  - 使用此方式时，schema字段可选，默认使用entity_config.json中的配置
-- `model` (可选): 模型名称，默认为 `nlp_structbert_siamese-uie_chinese-base`
-- `schema` (可选): 实体抽取schema，默认使用entity_config.json中的配置
-
-**请求示例（curl）：**
-```bash
-curl -X POST http://localhost:8000/api/batch/extract \
-  -H "Content-Type: application/json" \
-  -d '{
-    "files": [
-      {
-        "filename": "example1.txt",
-        "content": "1944年毕业于北大的名古屋铁道会长谷口清太郎等人在日本积极筹资。"
-      }
-    ],
-    "model": "nlp_structbert_siamese-uie_chinese-base",
-    "schema": {
-      "人物": null,
-      "地理位置": null,
-      "组织机构": null
-    }
-  }'
-```
-
-**响应示例（成功）：**
-```json
-{
-  "status": "success",
-  "data": {
-    "files_count": 2,
-    "results": {
-      "example1.txt": {
-        "text": "1944年毕业于北大的名古屋铁道会长谷口清太郎等人在日本积极筹资。",
-        "entities": {
-          "output": [
-            [
-              {
-                "type": "人物",
-                "span": "谷口清太郎",
-                "offset": [18, 23]
-              }
-            ]
-          ]
-        }
-      },
-      "example2.txt": {
-        "text": "在北京冬奥会自由式滑雪中，中国选手谷爱凌获得金牌。",
-        "entities": {
-          "output": [...]
-        }
-      }
-    },
-    "model": "nlp_structbert_siamese-uie_chinese-base",
-    "schema": {
-      "人物": null,
-      "地理位置": null,
-      "组织机构": null
-    }
-  },
-  "timestamp": "2025-01-19T10:30:00.123456"
-}
-```
-
-**响应示例（包含警告）：**
-```json
-{
-  "status": "success",
-  "data": {
-    "files_count": 2,
-    "results": {...}
-  },
-  "warnings": {
-    "read_errors": [
-      {
-        "filename": "missing.txt",
-        "error": "文件不存在"
-      }
-    ],
-    "message": "1 个文件读取失败"
-  },
-  "timestamp": "2025-01-19T10:30:00.123456"
-}
-```
-
-**HTTP状态码：**
-- `200`: 成功
-- `400`: 请求参数错误
-- `500`: 服务器内部错误
-
-**注意事项：**
-1. files和file_names不能同时为空
-2. 系统会自动记录批量推理时间（总耗时和平均每文件耗时）到日志文件
-3. 如果部分文件处理失败，会在warnings字段中说明
-
----
-
-### 5. 文件上传（单个文件）
-
-**接口地址：** `POST /api/upload`
-
-**说明：** 上传单个文件到data目录
-
-**请求头：**
-```
-Content-Type: multipart/form-data
-```
-
-**请求参数（Form Data）：**
-- `file` (必需): 要上传的文件
-- `overwrite` (可选): 如果文件已存在是否覆盖，默认为 `true`
-
-**支持的文件格式：**
-- `.txt` - 纯文本文件
-- `.md` - Markdown文件
-- `.docx` / `.doc` - Word文档
-- `.pdf` - PDF文档
-
-**请求示例（curl）：**
-```bash
-curl -X POST http://localhost:8000/api/upload \
-  -F "file=@example.txt" \
-  -F "overwrite=true"
-```
-
-**响应示例：**
-```json
-{
-  "status": "success",
-  "data": {
-    "filename": "example.txt",
-    "original_filename": "example.txt",
-    "file_path": "data/example.txt",
-    "file_size": 1024,
-    "overwritten": false
-  },
-  "timestamp": "2025-01-19T10:30:00.123456"
-}
-```
-
-**HTTP状态码：**
-- `200`: 成功
-- `400`: 请求参数错误（文件名为空、不支持的文件格式、文件已存在且overwrite=false）
-- `500`: 服务器内部错误（文件保存失败）
-
----
-
-### 6. 文件上传（多个文件）
-
-**接口地址：** `POST /api/upload/multiple`
-
-**说明：** 批量上传多个文件到data目录
-
-**请求头：**
-```
-Content-Type: multipart/form-data
-```
-
-**请求参数（Form Data）：**
-- `files` (必需): 要上传的文件列表（可上传多个）
-- `overwrite` (可选): 如果文件已存在是否覆盖，默认为 `true`
-
-**支持的文件格式：** 同单文件上传接口
-
-**请求示例（curl）：**
-```bash
-curl -X POST http://localhost:8000/api/upload/multiple \
-  -F "files=@example1.txt" \
-  -F "files=@example2.txt" \
-  -F "overwrite=true"
-```
-
-**响应示例：**
-```json
-{
-  "status": "success",
-  "data": {
-    "success_count": 2,
-    "failed_count": 0,
-    "files": [
-      {
-        "filename": "example1.txt",
-        "original_filename": "example1.txt",
-        "file_path": "data/example1.txt",
-        "file_size": 1024,
-        "overwritten": false,
-        "status": "success"
-      },
-      {
-        "filename": "example2.txt",
-        "original_filename": "example2.txt",
-        "file_path": "data/example2.txt",
-        "file_size": 2048,
-        "overwritten": false,
-        "status": "success"
-      }
-    ]
-  },
-  "timestamp": "2025-01-19T10:30:00.123456"
-}
-```
-
-**HTTP状态码：**
-- `200`: 成功（可能部分文件失败，查看响应中的failed_count和files数组中的status字段）
-- `400`: 请求参数错误（文件列表为空）
-- `500`: 服务器内部错误
 
 ---
 
@@ -630,6 +372,17 @@ curl -X POST http://localhost:8000/api/upload/multiple \
   - 直接输入地址文本即可，模型会自动识别地址中的各个成分
   - 支持识别省份、城市、区县、街道、POI、品牌等多种地理实体类型
 
+### 5. MGeo地理要素标注模型 (`mgeo_geographic_elements_tagging_chinese_base`)
+
+- **用途**：地理要素标注和地址成分识别
+- **支持任务**：地址结构化要素解析（Address Structured Elements Parsing）
+- **模型路径**：`model/mgeo_geographic_elements_tagging_chinese_base/`
+- **适用场景**：处理门址地址结构化要素解析、地理实体识别等任务
+- **特殊说明**：
+  - MGeo模型使用token-classification任务，**不需要schema参数**
+  - 直接输入地址文本即可，模型会自动识别地址中的结构化要素
+  - 支持识别地址中的各种地理要素和结构化信息
+
 ---
 
 ## 错误处理
@@ -685,18 +438,6 @@ YYYY-MM-DD HH:MM:SS - NER_API - LEVEL - 消息内容
 **失败记录（ERROR级别）：**
 ```
 推理时间记录 - 方法: extract_entities | 模型: qwen-flash | 文本长度: 50 | 推理耗时: 0.5000秒 (500.00毫秒) | 状态: 失败 | 错误: xxx
-```
-
-#### extract_from_files方法（批量文件抽取）
-
-**成功记录（INFO级别）：**
-```
-推理时间记录 - 方法: extract_from_files | 模型: nlp_structbert_siamese-uie_chinese-base | 文件数量: 5 | 总文本长度: 1000 | 推理耗时: 10.2345秒 (10234.50毫秒) | 平均每文件耗时: 2.0469秒 | 状态: 成功
-```
-
-**失败记录（ERROR级别）：**
-```
-推理时间记录 - 方法: extract_from_files | 模型: nlp_structbert_siamese-uie_chinese-base | 文件数量: 5 | 总文本长度: 1000 | 推理耗时: 5.5000秒 (5500.00毫秒) | 状态: 失败 | 错误: xxx
 ```
 
 ### 日志输出

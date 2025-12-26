@@ -25,6 +25,11 @@ wheels/
 
 # 环境配置
 .env
+# 但保留以下环境配置文件
+!.env_template
+!dev.env
+!prod.env
+!show.env
 
 # IDE
 .vscode/
@@ -39,6 +44,10 @@ output/*.json
 # 日志文件
 logs/
 *.log
+
+# PID文件（用于后台运行）
+*.pid
+ner_demo.pid
 
 # 数据文件夹
 data/

@@ -214,21 +214,4 @@ class MacBERTModel:
             results[entity_type] = []
         
         return results
-    
-    def extract_from_files(self, files_content: Dict[str, str], schema: Dict[str, Any]) -> Dict[str, Any]:
-        """
-        从多个文件内容中抽取实体
-        
-        Args:
-            files_content: 文件内容字典，key为文件名，value为文件内容
-            schema: 实体抽取schema
-            
-        Returns:
-            抽取结果字典，key为文件名，value为抽取结果
-        """
-        results = {}
-        for filename, content in files_content.items():
-            print(f"正在处理文件: {filename}")
-            results[filename] = self.extract_entities(content, schema)
-        return results
 

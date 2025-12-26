@@ -38,30 +38,6 @@ class ExtractResponse(BaseModel):
     ResultCode: str = Field(..., description="结果代码")
 
 
-class FileItem(BaseModel):
-    """文件项"""
-    filename: str = Field(..., description="文件名")
-    content: str = Field(..., description="文件内容")
-
-
-class BatchExtractRequest(BaseModel):
-    """批量实体抽取请求"""
-    files: List[FileItem] = Field(..., description="文件内容列表（必需）")
-    model: Optional[str] = Field(
-        default="nlp_structbert_siamese-uie_chinese-base",
-        description="模型名称（可选）"
-    )
-    schema: Optional[Dict[str, Any]] = Field(None, description="实体抽取schema（可选，默认使用entity_config.json）")
-
-
-class BatchExtractResponse(BaseModel):
-    """批量实体抽取响应"""
-    status: str
-    data: Optional[Dict[str, Any]] = None
-    warnings: Optional[Dict[str, Any]] = None
-    timestamp: str
-
-
 class UploadResponse(BaseModel):
     """文件上传响应"""
     status: str

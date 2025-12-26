@@ -53,27 +53,6 @@ class NERDemo:
         except Exception as e:
             raise Exception(f"实体配置加载失败: {str(e)}")
     
-    def process_files(self, files_content: Dict[str, str]) -> Dict[str, Any]:
-        """
-        处理文件内容字典
-        
-        Args:
-            files_content: 文件内容字典，key为文件名，value为文件内容
-        
-        Returns:
-            处理结果字典
-        """
-        if not files_content:
-            print("没有文件需要处理")
-            return {}
-        
-        print(f"开始处理 {len(files_content)} 个文件")
-        
-        # 进行实体抽取
-        results = self.ner_model.extract_from_files(files_content, self.entity_schema)
-        
-        return results
-    
     def save_results(self, results: Dict[str, Any], output_path: str = None) -> str:
         """
         保存结果到指定路径或返回JSON字符串

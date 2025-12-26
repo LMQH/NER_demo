@@ -7,7 +7,7 @@
 - ✅ **多模型支持**：支持Qwen-Flash、SiameseUIE、MacBERT、MGeo等多个模型进行实体抽取
 - ✅ **地址信息提取与补全**：自动识别地址、人名、电话信息，支持地址纠错和补全
 - ✅ **数据库地址补全**：基于MySQL数据库的区域信息进行地址数据补全和验证
-- ✅ **RESTful API服务**：基于FastAPI提供HTTP接口，支持批量处理
+- ✅ **RESTful API服务**：基于FastAPI提供HTTP接口
 - ✅ **自动API文档**：Swagger UI和ReDoc交互式文档
 - ✅ **完善的日志记录**：自动记录推理时间、模型信息、执行状态等
 - ✅ **环境配置管理**：支持开发/生产环境配置
@@ -257,26 +257,6 @@ uvicorn app:app --host 0.0.0.0 --port 8000 --reload
 **说明**：
 - 如果配置了MySQL数据库连接，系统会自动进行地址补全
 - 地址补全功能会根据数据库中的区域信息验证和补全地址数据
-
-### 4. 批量实体抽取
-
-**POST** `/api/batch/extract`
-
-批量处理多个文件的实体抽取。
-
-**请求体**：
-```json
-{
-  "files": [
-    {
-      "filename": "example.txt",
-      "content": "文件内容..."
-    }
-  ],
-  "model": "nlp_structbert_siamese-uie_chinese-base",
-  "schema": null
-}
-```
 
 ## 支持的模型
 
